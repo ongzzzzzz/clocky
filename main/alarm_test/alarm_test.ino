@@ -11,15 +11,38 @@
 #define WIFI_SSID "ZONGZ"
 #define WIFI_PASSWORD "zz12343705"
 
+#define alarm 14
+#define sw1 12
+#define sw2 13
+
+// RTC 3V, LCD 5V
+// Buzzer 5V
+// Both switches Input ->  Switch -> Ground, NodeMCU internal Pullup
+
+
+// D0   = 16; SCL of RTC and LCD
+// D1   = 5;  SDA of ETC and LCD
+// D2   = 4;
+// D3   = 0;
+// D4   = 2;
+// D5   = 14; Buzzer +ve Pin
+// D6   = 12; Switch 1 
+// D7   = 13; Switch 2
+// D8   = 15;
+// D9   = 3;
+// D10  = 1;
+
+
 FirebaseData firebaseData;
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 RTC_DS3231 rtc;
 
 char daysOfTheWeek[7][12] = {"SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"};
-
 String summary = "";
 String begins = "";
 String ends = "";
+
+//DateTime alarm (0,0,0);
 
 void setup ()
 {
@@ -54,6 +77,10 @@ void setup ()
   lcd.init();
 
   lcd.backlight();
+
+  pinMode(alarm, OUTPUT);        //buzzer
+  pinMode(sw1, INPUT_PULLUP);  //switch1
+  pinMode(sw2, INPUT_PULLUP);  //switch2
 }
 
 void loop ()
@@ -66,23 +93,42 @@ void loop ()
 
   showDate(now);
 
-  String today = daysOfTheWeek[now.dayOfTheWeek()];
 
+  String today = daysOfTheWeek[now.dayOfTheWeek()];
   if(summary == ""){
     Serial.println(today + ": Nothing Scheduled!");
   }
   else{
     Serial.println(today + ": " + summary + " from " + begins + " to " + ends);
   }
-
   Serial.println();
+
+//////////////////////////////////////////////////////////////////////// 
+//ok nvm now do: 
+//change alarm to LED see how, 
+//buzzer sound at right time, 
+//test SwitchLED, when alarm sound only light up
+//scrolling text, 
+
+//interface for changing alarm time
+//3d print + battery system
+// firebase system cloud function?
+
+  if((digitalRead(sw1) == LOW) && (digitalRead(sw2) == LOW)){
+    digitalWrite(alarm, LOW);
+  }
+  if(digitalRead(sw1) == LOW){Serial.println("SW1 IS ON");}
+  if(digitalRead(sw2) == LOW){Serial.println("SW2 IS ON");}
+
+////////////////////////////////////////////////////////////////////////
+  
   delay(1000);
   lcd.clear();
 }
 
+
 void checkEvents(){
 
-  
   if (Firebase.getString(firebaseData, "/calendar/event/summary")){
     summary = firebaseData.stringData();
   } else {
@@ -122,20 +168,6 @@ void showDate(DateTime dt){
   lcd.print("/");
   lcd.print(dt.day(), DEC);
 
-//  String Minute = "0";
-//  String Second = "0";
-//  if(dt.minute() < 10){
-//    Minute += String(dt.minute());
-//  } else{
-//    Minute = String(dt.minute());
-//  }
-//  
-//  if(dt.second() < 10){
-//    Second += String(dt.second());  
-//  } else{
-//    Second = String(dt.second());
-//  }
-
   String Minute = "0";
   String Second = "0";
   
@@ -164,30 +196,3 @@ void showDate(DateTime dt){
   void types(char *a) { Serial.println("it's a char*"); }
   void types(float a) { Serial.println("it's a float"); }
   void types(bool a) { Serial.println("it's a bool"); }
-
-//  if (Firebase.getString(firebaseData, "/calendar/event/summary"))
-//  {
-//    Serial.print("Event summary: ");
-//    Serial.println(firebaseData.stringData());
-//  } else {
-//    Serial.print("Error in getString: ");
-//    Serial.println(firebaseData.errorReason());
-//  }
-//
-//  if (Firebase.getString(firebaseData, "/calendar/event/begins"))
-//  {
-//    Serial.print("Event begin time: ");
-//    Serial.println(firebaseData.stringData());
-//  } else {
-//    Serial.print("Error in getString: ");
-//    Serial.println(firebaseData.errorReason());
-//  }
-//
-//  if (Firebase.getString(firebaseData, "/calendar/event/ends"))
-//  {
-//    Serial.print("Event end time: ");
-//    Serial.println(firebaseData.stringData());
-//  } else {
-//    Serial.print("Error in getString: ");
-//    Serial.println(firebaseData.errorReason());
-//  }
