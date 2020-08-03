@@ -1,4 +1,4 @@
-//25July, add scrolling text next
+//3Aug, add scrolling text next
 
 #include <Wire.h>
 #include "RTClib.h"
