@@ -1,4 +1,15 @@
-//3Aug, add scrolling text next
+//3Aug
+
+//change alarm to LED see how, 
+//buzzer sound at right time, 
+//test SwitchLED, when alarm sound only light up
+//scrolling text, 
+
+
+//interface for changing alarm time
+//3d print + battery system
+//check for events at specific time (see notebook)
+// firebase system cloud function?
 
 #include <Wire.h>
 #include "RTClib.h"
@@ -19,7 +30,7 @@
 // Buzzer 5V
 // Both switches Input ->  Switch -> Ground, NodeMCU internal Pullup
 
-
+// ESP8266 Pinouts
 // D0   = 16; SCL of RTC and LCD
 // D1   = 5;  SDA of ETC and LCD
 // D2   = 4;
@@ -42,6 +53,9 @@ String summary = "";
 String begins = "";
 String ends = "";
 
+bool state = 1;
+
+//Set alarm time? 
 //DateTime alarm (0,0,0);
 
 void setup ()
@@ -81,6 +95,7 @@ void setup ()
   pinMode(alarm, OUTPUT);        //buzzer
   pinMode(sw1, INPUT_PULLUP);  //switch1
   pinMode(sw2, INPUT_PULLUP);  //switch2
+
 }
 
 void loop ()
@@ -104,21 +119,19 @@ void loop ()
   Serial.println();
 
 //////////////////////////////////////////////////////////////////////// 
-//ok nvm now do: 
-//change alarm to LED see how, 
-//buzzer sound at right time, 
-//test SwitchLED, when alarm sound only light up
-//scrolling text, 
+//cacat place
 
-//interface for changing alarm time
-//3d print + battery system
-// firebase system cloud function?
+//  if((digitalRead(sw1) == LOW) && (digitalRead(sw2) == LOW)){
+//    digitalWrite(alarm, LOW);
+//  }
+//  if(digitalRead(sw1) == LOW){Serial.println("SW1 IS ON");}
+//  if(digitalRead(sw2) == LOW){Serial.println("SW2 IS ON");}
 
-  if((digitalRead(sw1) == LOW) && (digitalRead(sw2) == LOW)){
-    digitalWrite(alarm, LOW);
-  }
-  if(digitalRead(sw1) == LOW){Serial.println("SW1 IS ON");}
-  if(digitalRead(sw2) == LOW){Serial.println("SW2 IS ON");}
+//  state = !state;
+//  if(state){  Serial.println("State is true ");  }
+//  else if(!state){  Serial.println("State is false");}
+
+  digitalWrite(alarm, LOW);
 
 ////////////////////////////////////////////////////////////////////////
   
@@ -168,8 +181,15 @@ void showDate(DateTime dt){
   lcd.print("/");
   lcd.print(dt.day(), DEC);
 
+  String Hour = "0";
   String Minute = "0";
   String Second = "0";
+
+  if(dt.hour() < 10){
+    Hour += String(dt.hour());
+  } else{
+    Hour = String(dt.hour());
+  }
   
   if(dt.minute() < 10){
     Minute += String(dt.minute());  
@@ -183,16 +203,18 @@ void showDate(DateTime dt){
     Second = String(dt.second());
   }
 
+  
+
   lcd.setCursor(6, 1);
-  lcd.print(dt.hour(), DEC);
+  lcd.print(Hour);
   lcd.print(":");
   lcd.print(Minute);
   lcd.print(":");
   lcd.print(Second);
 }
 
-  void types(String a) { Serial.println("it's a String"); }
-  void types(int a) { Serial.println("it's an int"); }
-  void types(char *a) { Serial.println("it's a char*"); }
-  void types(float a) { Serial.println("it's a float"); }
-  void types(bool a) { Serial.println("it's a bool"); }
+//  void types(String a) { Serial.println("it's a String"); }
+//  void types(int a) { Serial.println("it's an int"); }
+//  void types(char *a) { Serial.println("it's a char*"); }
+//  void types(float a) { Serial.println("it's a float"); }
+//  void types(bool a) { Serial.println("it's a bool"); }
