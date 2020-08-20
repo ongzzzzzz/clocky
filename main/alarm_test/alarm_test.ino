@@ -127,11 +127,26 @@ void loop ()
 //  if(digitalRead(sw1) == LOW){Serial.println("SW1 IS ON");}
 //  if(digitalRead(sw2) == LOW){Serial.println("SW2 IS ON");}
 
-//  state = !state;
+  
 //  if(state){  Serial.println("State is true ");  }
 //  else if(!state){  Serial.println("State is false");}
 
-  digitalWrite(alarm, LOW);
+//the switches are inverted
+//the outputs / LEDs are not
+
+//push input
+  if(digitalRead(sw1) == LOW){ 
+    state = 1; 
+    Serial.println("Switch is momentarily pressed"); 
+  } else {
+    state = 0;
+  }
+  digitalWrite(alarm, state);
+
+  Serial.print(rtc.getTemperature());
+  Serial.println(" C");
+//toggle input
+//  if(digitalRead(sw1)== LOW){ state = !state; Serial.println("Switch is toggled")}
 
 ////////////////////////////////////////////////////////////////////////
   
@@ -175,11 +190,11 @@ void showDate(DateTime dt){
   lcd.print("Time: ");
 
   lcd.setCursor(6, 0);
-  lcd.print(dt.year(), DEC);
+  lcd.print(dt.day(), DEC);
   lcd.print("/");
   lcd.print(dt.month(), DEC);
   lcd.print("/");
-  lcd.print(dt.day(), DEC);
+  lcd.print(dt.year(), DEC);
 
   String Hour = "0";
   String Minute = "0";
