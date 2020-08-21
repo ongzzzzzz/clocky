@@ -1,35 +1,27 @@
-//3Aug
+//20Aug
 
-//change alarm to LED see how, 
-//buzzer sound at right time, 
+//important
+//buzzer sound at right time, use LEDSWITCH to stop alarm
+//use buttons to adjust alarm
+//save alarm time in EEPROM
 //test SwitchLED, when alarm sound only light up
-//scrolling text, 
+//scrolling text
+//refactor, dun use so much char day[] things 
 
-
+//todo:
 //interface for changing alarm time
 //3d print + battery system
 //check for events at specific time (see notebook)
 // firebase system cloud function?
+//control backlight
+//get Time from internet
 
-#include <Wire.h>
-#include "RTClib.h"
-#include "FirebaseESP8266.h"
-#include <LiquidCrystal_I2C.h>
-#include <ESP8266WiFi.h>
-
-#define FIREBASE_HOST "esp8266-f2775.firebaseio.com"
-#define FIREBASE_AUTH "EQ0xXkArCNnNnDlrd7kxaroYoTULU1lZgDPLtD9L"
-#define WIFI_SSID "ZONGZ"
-#define WIFI_PASSWORD "zz12343705"
-
-#define alarm 14
-#define sw1 12
-#define sw2 13
+//done:
+//change alarm to LED see how, 
 
 // RTC 3V, LCD 5V
 // Buzzer 5V
 // Both switches Input ->  Switch -> Ground, NodeMCU internal Pullup
-
 // ESP8266 Pinouts
 // D0   = 16; SCL of RTC and LCD
 // D1   = 5;  SDA of ETC and LCD
@@ -42,34 +34,72 @@
 // D8   = 15;
 // D9   = 3;
 // D10  = 1;
+//the switches are inverted
+//the outputs / LEDs are not
 
+#include <Wire.h>
+#include "RTClib.h"
+#include "FirebaseESP8266.h"
+#include <LiquidCrystal_I2C.h>
+#include <ESP8266WiFi.h>
+#include <EEPROM.h>
+
+#define FIREBASE_HOST "esp8266-f2775.firebaseio.com"
+#define FIREBASE_AUTH "EQ0xXkArCNnNnDlrd7kxaroYoTULU1lZgDPLtD9L"
+#define WIFI_SSID "ZONGZ"
+#define WIFI_PASSWORD "zz12343705"
+
+#define alarm 14
+#define sw1 12
+#define sw2 13
 
 FirebaseData firebaseData;
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 RTC_DS3231 rtc;
 
-char daysOfTheWeek[7][12] = {"SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"};
 String summary = "";
 String begins = "";
 String ends = "";
 
-bool state = 1;
+bool alarmState = 0;
 
-//Set alarm time? 
-//DateTime alarm (0,0,0);
+byte Left[] = {
+  B01010,
+  B10101,
+  B01010,
+  B10101,
+  B01010,
+  B10101,
+  B01010,
+  B10101
+};
 
-void setup ()
-{
+byte Right[] = {
+  B10101,
+  B01010,
+  B10101,
+  B01010,
+  B10101,
+  B01010,
+  B10101,
+  B01010
+};
+
+//alarm time
+//int wakeyHour;
+//int wakeyMin;
+//int wakeySec;
+DateTime actualTime;
+
+void setup (){
   Serial.begin(115200);
 
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   Serial.print("Connecting to Wi-Fi");
-  while (WiFi.status() != WL_CONNECTED)
-  {
+  while (WiFi.status() != WL_CONNECTED){
     Serial.print(".");
     delay(300);
   }
-
   Serial.println();
   Serial.print("Connected with IP: ");
   Serial.println(WiFi.localIP());
@@ -82,154 +112,132 @@ void setup ()
     Serial.println("Couldn't find RTC");
     while (1);
   }
-
   if (rtc.lostPower()) {
     rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
   }
 
-  lcd.begin(16, 2);
+  lcd.begin(16, 2);  
   lcd.init();
-
+  lcd.createChar(6, Left);
+  lcd.createChar(9, Right);
   lcd.backlight();
 
-  pinMode(alarm, OUTPUT);        //buzzer
+  pinMode(alarm, OUTPUT);      //buzzer
   pinMode(sw1, INPUT_PULLUP);  //switch1
   pinMode(sw2, INPUT_PULLUP);  //switch2
 
+//  wakeyHour = 22;
+//  wakeyMin = 27;
+//  wakeySec = 0;
 }
 
-void loop ()
-{
+void loop (){
   DateTime now = rtc.now();
-
-  if(now.hour() == 0 && now.minute() == 0){
-    checkEvents();
-  }
-
-  showDate(now);
-
-
-  String today = daysOfTheWeek[now.dayOfTheWeek()];
-  if(summary == ""){
-    Serial.println(today + ": Nothing Scheduled!");
-  }
-  else{
-    Serial.println(today + ": " + summary + " from " + begins + " to " + ends);
-  }
-  Serial.println();
-
-//////////////////////////////////////////////////////////////////////// 
-//cacat place
-
-//  if((digitalRead(sw1) == LOW) && (digitalRead(sw2) == LOW)){
-//    digitalWrite(alarm, LOW);
-//  }
-//  if(digitalRead(sw1) == LOW){Serial.println("SW1 IS ON");}
-//  if(digitalRead(sw2) == LOW){Serial.println("SW2 IS ON");}
-
+  actualTime = now + TimeSpan(0,0,4,31);
   
-//  if(state){  Serial.println("State is true ");  }
-//  else if(!state){  Serial.println("State is false");}
+  showDate(actualTime);
+  
+  checkEvents(actualTime);
 
-//the switches are inverted
-//the outputs / LEDs are not
+//  printEvents(now);
 
-//push input
-  if(digitalRead(sw1) == LOW){ 
-    state = 1; 
-    Serial.println("Switch is momentarily pressed"); 
-  } else {
-    state = 0;
+  char rightNow[] = "hhmmss";
+  if(actualTime.toString(rightNow) == "225200"){
+    alarmState = HIGH;
+    Serial.println("OMG ITS TIME OMG ITS TIMSITS TIMSITS TIMSITS TIMSITS TIMSITS TIMS");
   }
-  digitalWrite(alarm, state);
-
+  digitalWrite(alarm, alarmState);
+  Serial.println(actualTime.toString(rightNow));
+  types(actualTime.toString(rightNow));
+  
   Serial.print(rtc.getTemperature());
   Serial.println(" C");
-//toggle input
-//  if(digitalRead(sw1)== LOW){ state = !state; Serial.println("Switch is toggled")}
 
-////////////////////////////////////////////////////////////////////////
   
   delay(1000);
   lcd.clear();
 }
 
-
-void checkEvents(){
-
-  if (Firebase.getString(firebaseData, "/calendar/event/summary")){
-    summary = firebaseData.stringData();
-  } else {
-    Serial.print("Error in getString: ");
-    Serial.println(firebaseData.errorReason());
-  }
-
-
-  if (Firebase.getString(firebaseData, "/calendar/event/begins")){
-    begins = firebaseData.stringData();
-  } else {
-    Serial.print("Error in getString: ");
-    Serial.println(firebaseData.errorReason());
-  }
-
-
-  if (Firebase.getString(firebaseData, "/calendar/event/ends")){
-    ends = firebaseData.stringData();
-  } else {
-    Serial.print("Error in getString: ");
-    Serial.println(firebaseData.errorReason());
-  }
-}
-
 void showDate(DateTime dt){
-  dt = dt + TimeSpan(0,0,4,37);
   
+  char Date[] = "DDMMM";
   lcd.setCursor(0, 0);
-  lcd.print("Date: "); 
-  lcd.setCursor(0, 1);
-  lcd.print("Time: ");
-
-  lcd.setCursor(6, 0);
-  lcd.print(dt.day(), DEC);
-  lcd.print("/");
-  lcd.print(dt.month(), DEC);
-  lcd.print("/");
-  lcd.print(dt.year(), DEC);
-
-  String Hour = "0";
-  String Minute = "0";
-  String Second = "0";
-
-  if(dt.hour() < 10){
-    Hour += String(dt.hour());
-  } else{
-    Hour = String(dt.hour());
-  }
+  lcd.print(dt.toString(Date));
   
-  if(dt.minute() < 10){
-    Minute += String(dt.minute());  
-  } else {
-    Minute = String(dt.minute()); 
-  }
-
-  if(dt.second() < 10){
-    Second += String(dt.second());
-  } else{
-    Second = String(dt.second());
-  }
-
+  lcd.write(6);
+  lcd.write(9);
   
-
-  lcd.setCursor(6, 1);
-  lcd.print(Hour);
-  lcd.print(":");
-  lcd.print(Minute);
-  lcd.print(":");
-  lcd.print(Second);
+  char TimeRN[] = "hh:mm:ss";
+  lcd.print(dt.toString(TimeRN));
 }
 
-//  void types(String a) { Serial.println("it's a String"); }
-//  void types(int a) { Serial.println("it's an int"); }
-//  void types(char *a) { Serial.println("it's a char*"); }
-//  void types(float a) { Serial.println("it's a float"); }
-//  void types(bool a) { Serial.println("it's a bool"); }
+
+void checkEvents(DateTime dt){
+  char currently[] = "hh:mm";
+  Serial.println(dt.toString(currently));
+  
+  if(dt.toString(currently) == "00:00"){
+    if (Firebase.getString(firebaseData, "/calendar/event/summary")){
+      summary = firebaseData.stringData();
+    } else {
+      Serial.print("Error in getString: ");
+      Serial.println(firebaseData.errorReason());
+    }
+    if (Firebase.getString(firebaseData, "/calendar/event/begins")){
+      begins = firebaseData.stringData();
+    } else {
+      Serial.print("Error in getString: ");
+      Serial.println(firebaseData.errorReason());
+    }
+    if (Firebase.getString(firebaseData, "/calendar/event/ends")){
+      ends = firebaseData.stringData();
+    } else {
+      Serial.print("Error in getString: ");
+      Serial.println(firebaseData.errorReason());
+    }
+  }
+}
+
+//void printEvents(DateTime dt){
+//  char dayName[] = "DDD";
+//  String today = dt.toString(dayName);
+//  if(summary == ""){
+//    Serial.println(today + ": Nothing Scheduled!");
+//  }
+//  else{
+//    Serial.println(today + ": " + summary + " from " + begins + " to " + ends);
+//  }
+//}
+
+//The toString() buffer can be defined using following combinations:
+  //hh - the hour with a leading zero (00 to 23)
+  //mm - the minute with a leading zero (00 to 59)
+  //ss - the whole second with a leading zero where applicable (00 to 59)
+  //YYYY - the year as four digit number
+  //YY - the year as two digit number (00-99)
+  //MM - the month as number with a leading zero (01-12)
+  //MMM - the abbreviated English month name ('Jan' to 'Dec')
+  //DD - the day as number with a leading zero (01 to 31)
+  //DDD - the abbreviated English day name ('Mon' to 'Sun')
+//the toString()s are char*s
+
+  void types(String a) { Serial.println("it's a String"); }
+  void types(int a) { Serial.println("it's an int"); }
+  void types(char *a) { Serial.println("it's a char*"); }
+  void types(float a) { Serial.println("it's a float"); }
+  void types(bool a) { Serial.println("it's a bool"); }
+
+//DateTime is an OBJECT
+//dt.hour() and stuff are ints
+
+
+//toggle input
+//  if(digitalRead(sw1)== LOW){ alarmState = !alarmState; Serial.println("Switch is toggled")}
+
+//push input
+//  if(digitalRead(sw1) == LOW){ 
+//    alarmState = 1; 
+//    Serial.println("Switch is momentarily pressed"); 
+//  } else {
+//    alarmState = 0;
+//  }
