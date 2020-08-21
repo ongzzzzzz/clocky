@@ -21,7 +21,7 @@
 
 // RTC 3V, LCD 5V
 // Buzzer 5V
-// Both switches Input ->  Switch -> Ground, NodeMCU internal Pullup
+// Both switches Input -> [Switch] -> Ground, NodeMCU internal Pullup
 // ESP8266 Pinouts
 // D0   = 16; SCL of RTC and LCD
 // D1   = 5;  SDA of ETC and LCD
@@ -31,7 +31,7 @@
 // D5   = 14; Buzzer +ve Pin
 // D6   = 12; Switch 1 
 // D7   = 13; Switch 2
-// D8   = 15;
+// D8   = 15; StopSwitch (LED sw)
 // D9   = 3;
 // D10  = 1;
 //the switches are inverted
@@ -52,6 +52,7 @@
 #define alarm 14
 #define sw1 12
 #define sw2 13
+#define StopSW 15 
 
 FirebaseData firebaseData;
 LiquidCrystal_I2C lcd(0x27, 16, 2);
@@ -86,9 +87,9 @@ byte Right[] = {
 };
 
 //alarm time
-//int wakeyHour;
-//int wakeyMin;
-//int wakeySec;
+int wakeyHour;
+int wakeyMin;
+int wakeySec;
 DateTime actualTime;
 
 void setup (){
@@ -125,10 +126,11 @@ void setup (){
   pinMode(alarm, OUTPUT);      //buzzer
   pinMode(sw1, INPUT_PULLUP);  //switch1
   pinMode(sw2, INPUT_PULLUP);  //switch2
+  pinMode(StopSW, INPUT_PULLUP); //StopSW
 
-//  wakeyHour = 22;
-//  wakeyMin = 27;
-//  wakeySec = 0;
+  wakeyHour = 21;
+  wakeyMin = 47;
+  wakeySec = 0;
 }
 
 void loop (){
@@ -137,19 +139,16 @@ void loop (){
   
   showDate(actualTime);
   
-  checkEvents(actualTime);
-
+//  checkEvents(actualTime);
 //  printEvents(now);
 
-  char rightNow[] = "hhmmss";
-  if(actualTime.toString(rightNow) == "225200"){
-    alarmState = HIGH;
-    Serial.println("OMG ITS TIME OMG ITS TIMSITS TIMSITS TIMSITS TIMSITS TIMSITS TIMS");
+  if(actualTime.hour() == wakeyHour && actualTime.minute() == wakeyMin && actualTime.second() == wakeySec){
+    alarmState = 1;
+    Serial.println("OMG ITS TIME OMG ITS TIME OMG ITS TIME OMG ITS TIME OMG ITS TIME OMG ITS TIME OMG ITS TIME ");
   }
   digitalWrite(alarm, alarmState);
-  Serial.println(actualTime.toString(rightNow));
-  types(actualTime.toString(rightNow));
-  
+
+  types(rtc.getTemperature());
   Serial.print(rtc.getTemperature());
   Serial.println(" C");
 
@@ -159,7 +158,6 @@ void loop (){
 }
 
 void showDate(DateTime dt){
-  
   char Date[] = "DDMMM";
   lcd.setCursor(0, 0);
   lcd.print(dt.toString(Date));
@@ -172,31 +170,33 @@ void showDate(DateTime dt){
 }
 
 
-void checkEvents(DateTime dt){
-  char currently[] = "hh:mm";
-  Serial.println(dt.toString(currently));
-  
-  if(dt.toString(currently) == "00:00"){
-    if (Firebase.getString(firebaseData, "/calendar/event/summary")){
-      summary = firebaseData.stringData();
-    } else {
-      Serial.print("Error in getString: ");
-      Serial.println(firebaseData.errorReason());
-    }
-    if (Firebase.getString(firebaseData, "/calendar/event/begins")){
-      begins = firebaseData.stringData();
-    } else {
-      Serial.print("Error in getString: ");
-      Serial.println(firebaseData.errorReason());
-    }
-    if (Firebase.getString(firebaseData, "/calendar/event/ends")){
-      ends = firebaseData.stringData();
-    } else {
-      Serial.print("Error in getString: ");
-      Serial.println(firebaseData.errorReason());
-    }
-  }
-}
+//void checkEvents(DateTime dt){
+//  char currently[] = "hh:mm";
+//  Serial.println(dt.toString(currently));
+//
+//  //if event ended OR is currently midnight, update summary and start and end time
+//  
+//  if(dt.toString(currently) == "00:00"){
+//    if (Firebase.getString(firebaseData, "/calendar/event/summary")){
+//      summary = firebaseData.stringData();
+//    } else {
+//      Serial.print("Error in getString: ");
+//      Serial.println(firebaseData.errorReason());
+//    }
+//    if (Firebase.getString(firebaseData, "/calendar/event/begins")){
+//      begins = firebaseData.stringData();
+//    } else {
+//      Serial.print("Error in getString: ");
+//      Serial.println(firebaseData.errorReason());
+//    }
+//    if (Firebase.getString(firebaseData, "/calendar/event/ends")){
+//      ends = firebaseData.stringData();
+//    } else {
+//      Serial.print("Error in getString: ");
+//      Serial.println(firebaseData.errorReason());
+//    }
+//  }
+//}
 
 //void printEvents(DateTime dt){
 //  char dayName[] = "DDD";
@@ -208,6 +208,8 @@ void checkEvents(DateTime dt){
 //    Serial.println(today + ": " + summary + " from " + begins + " to " + ends);
 //  }
 //}
+
+/////////////////////////////////////////////////////////////////////////////////////////
 
 //The toString() buffer can be defined using following combinations:
   //hh - the hour with a leading zero (00 to 23)
