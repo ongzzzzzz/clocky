@@ -34,7 +34,7 @@
 // D8   = 15; StopSwitch (LED sw)
 // D9   = 3;
 // D10  = 1;
-//the switches are inverted
+//the switches are inverted (INPUT_PULLUP)
 //the outputs / LEDs are not
 
 #include <Wire.h>
@@ -146,9 +146,14 @@ void loop (){
     alarmState = 1;
     Serial.println("OMG ITS TIME OMG ITS TIME OMG ITS TIME OMG ITS TIME OMG ITS TIME OMG ITS TIME OMG ITS TIME ");
   }
+  
+  if(alarmState == 1 && digitalRead(StopSW) == LOW){
+    alarmState = 0;
+    Serial.println("ok bos i stop now");
+  }
+  
   digitalWrite(alarm, alarmState);
 
-  types(rtc.getTemperature());
   Serial.print(rtc.getTemperature());
   Serial.println(" C");
 
@@ -209,7 +214,7 @@ void showDate(DateTime dt){
 //  }
 //}
 
-/////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////// references to the bottom ///////////////////////////////////////////////////
 
 //The toString() buffer can be defined using following combinations:
   //hh - the hour with a leading zero (00 to 23)
@@ -221,7 +226,6 @@ void showDate(DateTime dt){
   //MMM - the abbreviated English month name ('Jan' to 'Dec')
   //DD - the day as number with a leading zero (01 to 31)
   //DDD - the abbreviated English day name ('Mon' to 'Sun')
-//the toString()s are char*s
 
   void types(String a) { Serial.println("it's a String"); }
   void types(int a) { Serial.println("it's an int"); }
@@ -231,6 +235,8 @@ void showDate(DateTime dt){
 
 //DateTime is an OBJECT
 //dt.hour() and stuff are ints
+//rtc.getTemperature() is a float
+//the toString()s are char*s
 
 
 //toggle input
