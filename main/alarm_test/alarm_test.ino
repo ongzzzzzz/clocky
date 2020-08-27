@@ -1,11 +1,11 @@
 //20Aug
 
 //important
-//buzzer sound at right time, use LEDSWITCH to stop alarm
-//use buttons to adjust alarm
-//save alarm time in EEPROM
-//test SwitchLED, when alarm sound only light up
+//get alarm time from firebase on device boot
+//get event end time from firebase
+//get cal data from firebase at midnight or event end  (use ||)
 //scrolling text
+//optimize firebase / zapier to efficiency when get data
 //refactor, dun use so much char day[] things 
 
 //todo:
@@ -15,9 +15,16 @@
 // firebase system cloud function?
 //control backlight
 //get Time from internet
+//make a JS webapp for it
 
 //done:
 //change alarm to LED see how, 
+//buzzer sound at right time, use LEDSWITCH to stop alarm
+//test SwitchLED, when alarm sound only light up
+
+// discontinued ideas
+//use buttons to adjust alarm
+//save alarm time in EEPROM
 
 // RTC 3V, LCD 5V
 // Buzzer 5V
@@ -61,6 +68,7 @@ RTC_DS3231 rtc;
 String summary = "";
 String begins = "";
 String ends = "";
+String alarmTime = "";
 
 bool alarmState = 0;
 
@@ -87,10 +95,8 @@ byte Right[] = {
 };
 
 //alarm time
-int wakeyHour;
-int wakeyMin;
-int wakeySec;
 DateTime actualTime;
+//bool alarmRung = false;
 
 void setup (){
   Serial.begin(115200);
@@ -128,9 +134,7 @@ void setup (){
   pinMode(sw2, INPUT_PULLUP);  //switch2
   pinMode(StopSW, INPUT_PULLUP); //StopSW
 
-  wakeyHour = 21;
-  wakeyMin = 47;
-  wakeySec = 0;
+  getAlarmTime();
 }
 
 void loop (){
@@ -140,14 +144,20 @@ void loop (){
   showDate(actualTime);
   
 //  checkEvents(actualTime);
-//  printEvents(now);
 
-  if(actualTime.hour() == wakeyHour && actualTime.minute() == wakeyMin && actualTime.second() == wakeySec){
+  char rightNow[] = "hh:mm:ss";
+  String stringyTime = String(actualTime.toString(rightNow));
+  Serial.print("the alarm i got: ");
+  Serial.println(alarmTime);
+  Serial.print("the time rn: ");
+  Serial.println(stringyTime);
+  
+  if((stringyTime == alarmTime) && (alarmState == 0)){
     alarmState = 1;
     Serial.println("OMG ITS TIME OMG ITS TIME OMG ITS TIME OMG ITS TIME OMG ITS TIME OMG ITS TIME OMG ITS TIME ");
   }
   
-  if(alarmState == 1 && digitalRead(StopSW) == LOW){
+  if((alarmState == 1) && (digitalRead(StopSW) == HIGH)){
     alarmState = 0;
     Serial.println("ok bos i stop now");
   }
@@ -174,6 +184,23 @@ void showDate(DateTime dt){
   lcd.print(dt.toString(TimeRN));
 }
 
+void getAlarmTime(){
+  if (Firebase.getString(firebaseData, "/calendar/alarmTime")){
+    alarmTime = firebaseData.stringData();
+  } else {
+    Serial.print("Error in getString: ");
+    Serial.println(firebaseData.errorReason());
+  }
+}
+
+//  lcd.autoscroll();
+//  // print from 0 to 9:
+//  for (int thisChar = 0; thisChar < 10; thisChar++) {
+//    lcd.print(thisChar);
+//    delay(500);
+//  }
+//  // turn off automatic scrolling
+//  lcd.noAutoscroll();
 
 //void checkEvents(DateTime dt){
 //  char currently[] = "hh:mm";
