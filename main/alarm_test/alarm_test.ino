@@ -1,10 +1,10 @@
 //20Aug
 
 //important
-//get alarm time from firebase on device boot
+//scrolling text
 //get event end time from firebase
 //get cal data from firebase at midnight or event end  (use ||)
-//scrolling text
+
 //optimize firebase / zapier to efficiency when get data
 //refactor, dun use so much char day[] things 
 
@@ -21,6 +21,7 @@
 //change alarm to LED see how, 
 //buzzer sound at right time, use LEDSWITCH to stop alarm
 //test SwitchLED, when alarm sound only light up
+//get alarm time from firebase on device boot
 
 // discontinued ideas
 //use buttons to adjust alarm
@@ -96,7 +97,8 @@ byte Right[] = {
 
 //alarm time
 DateTime actualTime;
-//bool alarmRung = false;
+int shiftedIndexes = 0;
+String message = "";
 
 void setup (){
   Serial.begin(115200);
@@ -135,6 +137,14 @@ void setup (){
   pinMode(StopSW, INPUT_PULLUP); //StopSW
 
   getAlarmTime();
+
+  //get some message on startup
+  if (Firebase.getString(firebaseData, "/calendar/event/summary")){
+    message = firebaseData.stringData();
+  } else {
+    Serial.print("Error in getString: ");
+    Serial.println(firebaseData.errorReason());
+  }
 }
 
 void loop (){
@@ -154,12 +164,12 @@ void loop (){
   
   if((stringyTime == alarmTime) && (alarmState == 0)){
     alarmState = 1;
-    Serial.println("OMG ITS TIME OMG ITS TIME OMG ITS TIME OMG ITS TIME OMG ITS TIME OMG ITS TIME OMG ITS TIME ");
+    Serial.println("WAKEY WAKEY MDF WAKEY WAKEY MDF WAKEY WAKEY MDF WAKEY WAKEY MDF ");
   }
   
   if((alarmState == 1) && (digitalRead(StopSW) == HIGH)){
     alarmState = 0;
-    Serial.println("ok bos i stop now");
+    Serial.println("!!!!!!!!!!!!!!!!!!!! Alarm Stopped !!!!!!!!!!!!!!!!!!!!");
   }
   
   digitalWrite(alarm, alarmState);
@@ -167,9 +177,28 @@ void loop (){
   Serial.print(rtc.getTemperature());
   Serial.println(" C");
 
+  printEvents(message, shiftedIndexes);
+  //scrolling mechanism
+  if(shiftedIndexes > message.length()){
+    shiftedIndexes = 0;
+  } else{
+    shiftedIndexes++;
+  }  
   
   delay(1000);
   lcd.clear();
+}
+
+void printEvents(String message, int shiftedIndexes){
+  String toPrint = "";
+  
+  toPrint += message.substring(shiftedIndexes, message.length());
+  toPrint += message.substring(0, shiftedIndexes);
+
+  lcd.setCursor(0, 1);
+  lcd.print(toPrint);
+
+  
 }
 
 void showDate(DateTime dt){
@@ -192,6 +221,8 @@ void getAlarmTime(){
     Serial.println(firebaseData.errorReason());
   }
 }
+
+
 
 //  lcd.autoscroll();
 //  // print from 0 to 9:
