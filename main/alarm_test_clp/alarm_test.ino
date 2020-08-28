@@ -1,8 +1,7 @@
 //20Aug
 
 //important
-//complete PCB, program from PCB
-//finalise outer casing
+//scrolling text
 //get event end time from firebase
 //get cal data from firebase at midnight or event end  (use ||)
 
@@ -23,7 +22,6 @@
 //buzzer sound at right time, use LEDSWITCH to stop alarm
 //test SwitchLED, when alarm sound only light up
 //get alarm time from firebase on device boot
-//scrolling text
 
 // discontinued ideas
 //use buttons to adjust alarm
@@ -37,11 +35,11 @@
 // D1   = 5;  SDA of ETC and LCD
 // D2   = 4;
 // D3   = 0;
-// D4   = 2;
+// D4   = 2; //alarm
 // D5   = 14; Buzzer +ve Pin
-// D6   = 12; 
-// D7   = 13; StopSwitch (LED)
-// D8   = 15; StopSwitch (sw)
+// D6   = 12; Switch 1 //cancelled switch
+// D7   = 13; Switch 2 //cancelled switch, now become LED OF LEDSW
+// D8   = 15; StopSwitch (LED sw)
 // D9   = 3;
 // D10  = 1;
 //the switches are inverted (INPUT_PULLUP)
@@ -52,17 +50,21 @@
 #include "FirebaseESP8266.h"
 #include <LiquidCrystal_I2C.h>
 #include <ESP8266WiFi.h>
-#include <EEPROM.h>
 
 #define FIREBASE_HOST "esp8266-f2775.firebaseio.com"
 #define FIREBASE_AUTH "EQ0xXkArCNnNnDlrd7kxaroYoTULU1lZgDPLtD9L"
-#define WIFI_SSID "ZONGZ"
-#define WIFI_PASSWORD "zz12343705"
+#define WIFI_SSID "OFF-ADMIN_WIFI"
+#define WIFI_PASSWORD "clp8283655"
 
-#define alarm 14
-#define sw1 12
-#define sw2 13
-#define StopSW 15 
+//#define alarm 14
+//#define sw1 12
+//#define sw2 13
+//#define StopSW 15 
+
+//onpcb:
+#define alarm 2
+#define StopSW 14
+#define StopSWLED 12 
 
 FirebaseData firebaseData;
 LiquidCrystal_I2C lcd(0x27, 16, 2);
@@ -134,21 +136,19 @@ void setup (){
   lcd.backlight();
 
   pinMode(alarm, OUTPUT);      //buzzer
-  pinMode(sw1, INPUT_PULLUP);  //switch1
-  pinMode(sw2, INPUT_PULLUP);  //switch2
+//  pinMode(sw1, INPUT_PULLUP);  //switch1
+//  pinMode(sw2, INPUT_PULLUP);  //switch2
   pinMode(StopSW, INPUT_PULLUP); //StopSW
 
   getAlarmTime();
 
   //get some message on startup
-//  if (Firebase.getString(firebaseData, "/calendar/event/summary")){
-//    message = firebaseData.stringData();
-//  } else {
-//    Serial.print("Error in getString: ");
-//    Serial.println(firebaseData.errorReason());
-//  }
-
-  message = "ON AIR WITH CROWDSOURCE WHY THIS NO CACAT LEH HUH";
+  if (Firebase.getString(firebaseData, "/calendar/event/summary")){
+    message = firebaseData.stringData();
+  } else {
+    Serial.print("Error in getString: ");
+    Serial.println(firebaseData.errorReason());
+  }
 }
 
 void loop (){
@@ -195,14 +195,14 @@ void loop (){
 
 void printEvents(String message, int shiftedIndexes){
   String toPrint = "";
-  toPrint += message.substring(shiftedIndexes, (shiftedIndexes+16));
-  toPrint += " " + String(rtc.getTemperature()) + "oC";
-//  toPrint += message.substring(shiftedIndexes, message.length());
-//  toPrint += message.substring(0, shiftedIndexes);
+  
+  toPrint += message.substring(shiftedIndexes, message.length());
+  toPrint += message.substring(0, shiftedIndexes);
 
   lcd.setCursor(0, 1);
   lcd.print(toPrint);
 
+  
 }
 
 void showDate(DateTime dt){
