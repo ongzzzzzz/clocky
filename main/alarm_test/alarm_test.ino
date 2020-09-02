@@ -1,22 +1,21 @@
-//20Aug
+//29Aug
 
 //important
-//complete PCB, program from PCB
+//get all data from firebase and print it prettily on LCD (everything)
+//control backlight and LED on LEDSW
+//battery system
 //finalise outer casing
-//get event end time from firebase
 //get cal data from firebase at midnight or event end  (use ||)
+//get time from firebase to readjust itself every hour https://github.com/scanlime/esp8266-Arduino/blob/master/tests/Time/Time.ino
+//get alarm time every midnight
 
+
+//todo:
+//interface for changing alarm time, make a JS webapp for it
+//firebase system cloud function?
 //optimize firebase / zapier to efficiency when get data
 //refactor, dun use so much char day[] things 
 
-//todo:
-//interface for changing alarm time
-//3d print + battery system
-//check for events at specific time (see notebook)
-// firebase system cloud function?
-//control backlight
-//get Time from internet
-//make a JS webapp for it
 
 //done:
 //change alarm to LED see how, 
@@ -24,18 +23,23 @@
 //test SwitchLED, when alarm sound only light up
 //get alarm time from firebase on device boot
 //scrolling text
+//complete PCB, program from PCB
 
 // discontinued ideas
 //use buttons to adjust alarm
 //save alarm time in EEPROM
 
-// RTC 3V, LCD 5V
+// RTC 3V/5V , LCD 5V
 // Buzzer 5V
 // Both switches Input -> [Switch] -> Ground, NodeMCU internal Pullup
+//the switches are inverted (INPUT_PULLUP)
+//the outputs / LEDs are not
+
+
 // ESP8266 Pinouts
-// D0   = 16; SCL of RTC and LCD
-// D1   = 5;  SDA of ETC and LCD
-// D2   = 4;
+// D0   = 16; 
+// D1   = 5; SCL of RTC and LCD
+// D2   = 4; SDA of ETC and LCD
 // D3   = 0;
 // D4   = 2;
 // D5   = 14; Buzzer +ve Pin
@@ -44,8 +48,20 @@
 // D8   = 15; StopSwitch (sw)
 // D9   = 3;
 // D10  = 1;
-//the switches are inverted (INPUT_PULLUP)
-//the outputs / LEDs are not
+
+
+// CLOCKYPCB NodeMCU Pinouts
+// D0   = 16; 
+// D1   = 5; SCL of RTC and LCD
+// D2   = 4; SDA of ETC and LCD
+// D3   = 0;
+// D4   = 2; Buzzer +ve Pin
+// D5   = 14; StopSwitch (sw)
+// D6   = 12; StopSwitch (LED)
+// D7   = 13; 
+// D8   = 15; 
+// D9   = 3;
+// D10  = 1;
 
 #include <Wire.h>
 #include "RTClib.h"
@@ -59,10 +75,10 @@
 #define WIFI_SSID "ZONGZ"
 #define WIFI_PASSWORD "zz12343705"
 
-#define alarm 14
-#define sw1 12
-#define sw2 13
-#define StopSW 15 
+//pcb pins
+#define alarm 2 //D4
+#define StopSW 14 //D5
+#define StopSWLED 12 //D6  
 
 FirebaseData firebaseData;
 LiquidCrystal_I2C lcd(0x27, 16, 2);
@@ -98,7 +114,7 @@ byte Right[] = {
 };
 
 //alarm time
-DateTime actualTime;
+//DateTime actualTime;
 int shiftedIndexes = 0;
 String message = "";
 
@@ -123,10 +139,13 @@ void setup (){
     Serial.println("Couldn't find RTC");
     while (1);
   }
+  
   if (rtc.lostPower()) {
     rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
   }
 
+//  rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+  
   lcd.begin(16, 2);  
   lcd.init();
   lcd.createChar(6, Left);
@@ -134,33 +153,30 @@ void setup (){
   lcd.backlight();
 
   pinMode(alarm, OUTPUT);      //buzzer
-  pinMode(sw1, INPUT_PULLUP);  //switch1
-  pinMode(sw2, INPUT_PULLUP);  //switch2
   pinMode(StopSW, INPUT_PULLUP); //StopSW
+  pinMode(StopSWLED, OUTPUT); //StopSWLED
 
   getAlarmTime();
 
   //get some message on startup
-//  if (Firebase.getString(firebaseData, "/calendar/event/summary")){
-//    message = firebaseData.stringData();
-//  } else {
-//    Serial.print("Error in getString: ");
-//    Serial.println(firebaseData.errorReason());
-//  }
-
-  message = "ON AIR WITH CROWDSOURCE WHY THIS NO CACAT LEH HUH";
+  if (Firebase.getString(firebaseData, "/calendar/event/summary")){
+    message = firebaseData.stringData();
+  } else {
+    Serial.print("Error in getString: ");
+    Serial.println(firebaseData.errorReason());
+  }
 }
 
 void loop (){
   DateTime now = rtc.now();
-  actualTime = now + TimeSpan(0,0,4,31);
+//  actualTime = now + TimeSpan(0,0,4,31);
   
-  showDate(actualTime);
+  showDate(now);
   
 //  checkEvents(actualTime);
 
   char rightNow[] = "hh:mm:ss";
-  String stringyTime = String(actualTime.toString(rightNow));
+  String stringyTime = String(now.toString(rightNow));
   Serial.print("the alarm i got: ");
   Serial.println(alarmTime);
   Serial.print("the time rn: ");
@@ -171,12 +187,13 @@ void loop (){
     Serial.println("WAKEY WAKEY MDF WAKEY WAKEY MDF WAKEY WAKEY MDF WAKEY WAKEY MDF ");
   }
   
-  if((alarmState == 1) && (digitalRead(StopSW) == HIGH)){
+  if((alarmState == 1) && (digitalRead(StopSW) == LOW)){
     alarmState = 0;
     Serial.println("!!!!!!!!!!!!!!!!!!!! Alarm Stopped !!!!!!!!!!!!!!!!!!!!");
   }
   
   digitalWrite(alarm, alarmState);
+  digitalWrite(StopSWLED, alarmState);
 
   Serial.print(rtc.getTemperature());
   Serial.println(" C");
@@ -196,7 +213,7 @@ void loop (){
 void printEvents(String message, int shiftedIndexes){
   String toPrint = "";
   toPrint += message.substring(shiftedIndexes, (shiftedIndexes+16));
-  toPrint += " " + String(rtc.getTemperature()) + "oC";
+  toPrint += " " + String(rtc.getTemperature()).substring(0,2) + (char)223 + "C";  
 //  toPrint += message.substring(shiftedIndexes, message.length());
 //  toPrint += message.substring(0, shiftedIndexes);
 
@@ -227,7 +244,7 @@ void getAlarmTime(){
 }
 
 
-
+//----------------------------------------------- RANDOM CODES I DIDNT WANT TO DELETE -----------------------------------------------
 //  lcd.autoscroll();
 //  // print from 0 to 9:
 //  for (int thisChar = 0; thisChar < 10; thisChar++) {
@@ -299,7 +316,6 @@ void getAlarmTime(){
 //dt.hour() and stuff are ints
 //rtc.getTemperature() is a float
 //the toString()s are char*s
-
 
 //toggle input
 //  if(digitalRead(sw1)== LOW){ alarmState = !alarmState; Serial.println("Switch is toggled")}
