@@ -1,13 +1,16 @@
- //29Aug
+ //3Sep
 
 //important
-//get all data from firebase and print it prettily on LCD (everything)
+//write a function return the message "XXX from XXX to XX :)"
+//get the message on startup
+//print it prettily on LCD (everything)
+//get on desired times at midnight or event end  (use ||)
 //control backlight and LED on LEDSW
 //battery system
 //finalise outer casing
-//get cal data from firebase at midnight or event end  (use ||)
+
 //get time from firebase to readjust itself every hour https://github.com/scanlime/esp8266-Arduino/blob/master/tests/Time/Time.ino
-//get alarm time every midnight
+//get alarm time every midnight 
 
 
 //todo:
@@ -161,13 +164,29 @@ void setup (){
 
   getAlarmTime();
 
-  //get some message on startup
+  //get some message on startup, used for testing
   if (Firebase.getString(firebaseData, "/calendar/event/summary")){
-    message = firebaseData.stringData();
+    message += firebaseData.stringData();
   } else {
     Serial.print("Error in getString: ");
     Serial.println(firebaseData.errorReason());
   }
+  message += " from ";
+  if (Firebase.getString(firebaseData, "/calendar/event/begins")){
+    message += firebaseData.stringData();
+  } else {
+    Serial.print("Error in getString: ");
+    Serial.println(firebaseData.errorReason());
+  }
+  message += " to ";
+  if (Firebase.getString(firebaseData, "/calendar/event/summary")){
+    message += firebaseData.stringData();
+  } else {
+    Serial.print("Error in getString: ");
+    Serial.println(firebaseData.errorReason());
+  }
+  message += ". ";
+
 }
 
 void loop (){
