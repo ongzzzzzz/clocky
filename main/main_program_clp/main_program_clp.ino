@@ -84,13 +84,6 @@ FirebaseData firebaseData;
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 RTC_DS3231 rtc;
 
-String summary = "";
-String begins = "";
-String ends = "";
-String alarmTime = "";
-
-bool alarmState = 0;
-
 byte Left[] = {
   B01010,
   B10101,
@@ -113,10 +106,20 @@ byte Right[] = {
   B01010
 };
 
+/*--------------- GLOBAL VARIABLES ---------------*/
 //alarm time
 //DateTime actualTime;
 int shiftedIndexes = 0;
+
 String message = "";
+
+String nextGetTime = "00:00";
+String summary = "";
+String begins = "";
+String ends = "";
+
+String alarmTime = "";
+bool alarmState = 0;
 
 void setup (){
   Serial.begin(115200);
@@ -169,11 +172,10 @@ void setup (){
 
 void loop (){
   DateTime now = rtc.now();
-//  actualTime = now + TimeSpan(0,0,4,31);
+//  time adjustment
+//  now = now + TimeSpan(0,0,4,31);
   
   showDate(now);
-  
-//  checkEvents(actualTime);
 
   char rightNow[] = "hh:mm:ss";
   String stringyTime = String(now.toString(rightNow));
@@ -195,9 +197,6 @@ void loop (){
   digitalWrite(alarm, alarmState);
   digitalWrite(StopSWLED, alarmState);
 
-  Serial.print(rtc.getTemperature());
-  Serial.println(" C");
-
   printEvents(message, shiftedIndexes);
   //scrolling mechanism
   if(shiftedIndexes > message.length()){
@@ -205,9 +204,31 @@ void loop (){
   } else{
     shiftedIndexes++;
   }  
+
+  getEventData(stringyTime);
   
   delay(1000);
   lcd.clear();
+}
+
+void getEventData(String Time){
+  if(Time == nextGetTime || Time == "00:00"){
+    summary = getFirebase("summary");
+    begins = getFirebase("begins");
+    ends = getFirebase("ends");
+    
+    nextGetTime = ends;
+  }
+}
+
+String getFirebase(String request){
+  if (Firebase.getString(firebaseData, "/calendar/event/" + request)){
+    return firebaseData.stringData();
+  } else {
+    Serial.print("Error in getString: ");
+    Serial.println(firebaseData.errorReason());
+    return "00:00";
+  }
 }
 
 void printEvents(String message, int shiftedIndexes){
