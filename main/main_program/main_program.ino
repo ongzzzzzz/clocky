@@ -1,18 +1,21 @@
- //29Aug
+ //6Sep
 
 //important
+//parse the cacat google calendar time
+//get time from firebase to readjust itself every hour https://github.com/scanlime/esp8266-Arduino/blob/master/tests/Time/Time.ino
+//get alarm time every midnight
+//get cal data from firebase at midnight or event end  (use ||)
+
 //get all data from firebase and print it prettily on LCD (everything)
 //control backlight and LED on LEDSW
 //battery system
 //finalise outer casing
-//get cal data from firebase at midnight or event end  (use ||)
-//get time from firebase to readjust itself every hour https://github.com/scanlime/esp8266-Arduino/blob/master/tests/Time/Time.ino
-//get alarm time every midnight
 
 
 //todo:
-//interface for changing alarm time, make a JS webapp for it
-//firebase system cloud function?
+//get weather from accuweather https://github.com/ImJustChew/cec-iclock/blob/master/functions/index.js
+//cloud function + calendar https://developers.google.com/calendar/quickstart/js
+//setup google auth so clocky can mass produce, not just for ur firebase acc
 //optimize firebase / zapier to efficiency when get data
 //refactor, dun use so much char day[] things 
 
@@ -24,6 +27,7 @@
 //get alarm time from firebase on device boot
 //scrolling text
 //complete PCB, program from PCB
+//interface for changing alarm time, make a JS webapp for it
 
 // discontinued ideas
 //use buttons to adjust alarm

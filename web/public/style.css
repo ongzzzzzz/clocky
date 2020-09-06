@@ -27,5 +27,5 @@ html, body{
 }
 
 .text{
-    color: var(--secondary);
+    color: var(--primary);
 }
