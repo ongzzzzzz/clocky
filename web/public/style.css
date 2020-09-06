@@ -1,0 +1,31 @@
+:root{
+    --background: #000000;
+    --primary: #FFFFFF;
+    --secondary: #f5ff70;
+}
+
+html, body{
+    width: 100%;
+    height: 100%;
+    background-color: var(--background);
+    font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
+    overflow: hidden;
+}
+
+#heading{
+    position: relative;
+    left: 25%;
+
+    width: 50%;
+    padding: 1vw;
+
+    color: var(--background);
+    background-color: var(--primary);
+    border-radius: 696969px;
+    text-align: center;
+    font-size: 3em;
+}
+
+.text{
+    color: var(--secondary);
+}

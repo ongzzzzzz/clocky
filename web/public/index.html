@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>clocky</title>
+
+    <!-- update the version number as needed -->
+    <script defer src="/__/firebase/7.19.1/firebase-app.js"></script>
+    <!-- include only the Firebase features as you need -->
+    <script defer src="/__/firebase/7.19.1/firebase-auth.js"></script>
+    <script defer src="/__/firebase/7.19.1/firebase-database.js"></script>
+    <script defer src="/__/firebase/7.19.1/firebase-messaging.js"></script>
+    <script defer src="/__/firebase/7.19.1/firebase-storage.js"></script>
+    <!-- initialize the SDK after all desired features are loaded -->
+    <script defer src="/__/firebase/init.js"></script>
+
+    <link rel="stylesheet" href="./style.css">
+
+  </head>
+  <body>
+    <h1 id="heading">clocky website</h1>
+    <h2 class="text">currently set alarm:</h2>
+    <h3 class="text" id="currentAlarmTime">holup im getting it for ya</h3>
+
+    <div id="timeRightNow" class="text"></div>
+
+    <form>
+      <label for="alarmTime" class="text">I want to wake up at: </label>
+      <input type="time" id="alarmTime" step='1' min="00:00:00" max="23:59:59">
+      <button type="button" id="submit">wake me up!</button>
+    </form>
+
+    <div id="event"></div>
+
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        console.error("oh hey why are you here");
+
+        var database = firebase.database();
+
+        database.ref('/calendar/alarmTime').on("value", (snapshot) => {
+          document.getElementById('currentAlarmTime').innerHTML = snapshot.val();
+          console.log(`The read returned: ${snapshot.val()}`);
+        }, (error) => {
+          console.error(error);
+        });
+
+        document.getElementById('submit').onclick = () => {
+            var updatedTime = document.getElementById('alarmTime').value;
+            console.log(`The time you set: ${updatedTime}`);
+            database.ref('/calendar/alarmTime').set(updatedTime);
+        }
+
+        database.ref('/calendar/event').on("value", (snapshot) => {
+          document.getElementById('event').innerHTML = "";
+          console.log(`What i got was `);
+          console.log(snapshot.val());
+
+          for (var key in snapshot.val()) {
+            if (snapshot.val().hasOwnProperty(key)) {
+              var element = document.createElement("P");
+              var text = document.createTextNode(`${key}: ${snapshot.val()[key]}`);
+              element.appendChild(text);
+              element.className = "text";
+              document.getElementById("event").appendChild(element); 
+
+              console.log(key + " -> " + snapshot.val()[key]);
+            }
+          }
+
+        });
+
+        startTime();
+      });
+
+      function startTime() {
+        var today = new Date();
+        var h = today.getHours();
+        var m = today.getMinutes();
+        var s = today.getSeconds();
+        m = checkTime(m);
+        s = checkTime(s);
+        document.getElementById('timeRightNow').innerHTML =
+        h + ":" + m + ":" + s;
+        var t = setTimeout(startTime, 500);
+      }
+      function checkTime(i) {
+        if (i < 10) {i = "0" + i};  // add zero in front of numbers < 10
+        return i;
+      }
+
+      
+    </script>
+  </body>
+</html>
