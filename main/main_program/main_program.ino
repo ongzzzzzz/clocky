@@ -1,11 +1,11 @@
- //6Sep
+//10Sep
 
 //important
-//parse the cacat google calendar time
 //get time from firebase to readjust itself every hour https://github.com/scanlime/esp8266-Arduino/blob/master/tests/Time/Time.ino
 //get alarm time every midnight
 //get cal data from firebase at midnight or event end  (use ||)
 
+//optimise the JS webapp for it
 //get all data from firebase and print it prettily on LCD (everything)
 //control backlight and LED on LEDSW
 //battery system
@@ -27,7 +27,8 @@
 //get alarm time from firebase on device boot
 //scrolling text
 //complete PCB, program from PCB
-//interface for changing alarm time, make a JS webapp for it
+//interface for changing alarm time, 
+//parse the cacat google calendar time
 
 // discontinued ideas
 //use buttons to adjust alarm
@@ -90,7 +91,13 @@ RTC_DS3231 rtc;
 
 String summary = "";
 String begins = "";
+String beginsDate = "";
+String beginsTime = "";
+
 String ends = "";
+String endsDate = "";
+String endsTime  = "";
+
 String alarmTime = "";
 
 bool alarmState = 0;
@@ -125,6 +132,14 @@ String message = "";
 void setup (){
   Serial.begin(115200);
 
+  lcd.begin(16, 2);  
+  lcd.init();
+  lcd.createChar(6, Left);
+  lcd.createChar(9, Right);
+  lcd.backlight();
+  lcd.setCursor(0,0);
+  lcd.print("connecting......");
+
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   Serial.print("Connecting to Wi-Fi");
   while (WiFi.status() != WL_CONNECTED){
@@ -144,18 +159,12 @@ void setup (){
     while (1);
   }
   
-  if (rtc.lostPower()) {
-    rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
-  }
+//  if (rtc.lostPower()) {
+//    rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+//  }
 
-//  rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+  rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
   
-  lcd.begin(16, 2);  
-  lcd.init();
-  lcd.createChar(6, Left);
-  lcd.createChar(9, Right);
-  lcd.backlight();
-
   pinMode(alarm, OUTPUT);      //buzzer
   pinMode(StopSW, INPUT_PULLUP); //StopSW
   pinMode(StopSWLED, OUTPUT); //StopSWLED
@@ -163,12 +172,8 @@ void setup (){
   getAlarmTime();
 
   //get some message on startup
-  if (Firebase.getString(firebaseData, "/calendar/event/summary")){
-    message = firebaseData.stringData();
-  } else {
-    Serial.print("Error in getString: ");
-    Serial.println(firebaseData.errorReason());
-  }
+  updateEventsFromFirebase();
+  lcd.clear();
 }
 
 void loop (){
@@ -180,11 +185,19 @@ void loop (){
 //  checkEvents(actualTime);
 
   char rightNow[] = "hh:mm:ss";
+  char dateRightNow[] = "YYYY-MM-DD";
   String stringyTime = String(now.toString(rightNow));
+  String stringyDate = String(now.toString(dateRightNow));
   Serial.print("the alarm i got: ");
   Serial.println(alarmTime);
   Serial.print("the time rn: ");
   Serial.println(stringyTime);
+  Serial.print("the date rn: ");
+  Serial.println(stringyDate);
+
+  if((stringyTime == "00:00:00") || ((stringyDate == endsDate) && (stringyTime == endsTime))){
+    updateEventsFromFirebase();
+  }
   
   if((stringyTime == alarmTime) && (alarmState == 0)){
     alarmState = 1;
@@ -209,7 +222,13 @@ void loop (){
   } else{
     shiftedIndexes++;
   }  
-  
+
+  Serial.print("end date: ");
+  Serial.println(endsDate);
+  Serial.print("end time: ");
+  Serial.println(endsTime);
+  Serial.println("-----------------------------------------------------------------------------------");
+
   delay(1000);
   lcd.clear();
 }
@@ -241,6 +260,31 @@ void showDate(DateTime dt){
 void getAlarmTime(){
   if (Firebase.getString(firebaseData, "/calendar/alarmTime")){
     alarmTime = firebaseData.stringData();
+  } else {
+    Serial.print("Error in getString: ");
+    Serial.println(firebaseData.errorReason());
+  }
+}
+
+void updateEventsFromFirebase(){
+  if (Firebase.getString(firebaseData, "/calendar/event/summary")){
+    message = firebaseData.stringData();
+  } else {
+    Serial.print("Error in getString: ");
+    Serial.println(firebaseData.errorReason());
+  }
+  if (Firebase.getString(firebaseData, "/calendar/event/begins")){
+    begins = firebaseData.stringData();
+    beginsDate = begins.substring(0, 10);
+    beginsTime = begins.substring(11, 19);
+  } else {
+    Serial.print("Error in getString: ");
+    Serial.println(firebaseData.errorReason());
+  }
+  if (Firebase.getString(firebaseData, "/calendar/event/ends")){
+    ends = firebaseData.stringData();
+    endsDate = ends.substring(0, 10);
+    endsTime = ends.substring(11, 19);
   } else {
     Serial.print("Error in getString: ");
     Serial.println(firebaseData.errorReason());
