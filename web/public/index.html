@@ -22,6 +22,7 @@
     <h1 id="heading">clocky website</h1>
     <h2 class="text">currently set alarm:</h2>
     <h3 class="text" id="currentAlarmTime">holup im getting it for ya</h3>
+    <h3 class="text" id="error"></h3>
 
     <div id="timeRightNow" class="text"></div>
 
@@ -48,8 +49,13 @@
 
         document.getElementById('submit').onclick = () => {
             var updatedTime = document.getElementById('alarmTime').value;
-            console.log(`The time you set: ${updatedTime}`);
-            database.ref('/calendar/alarmTime').set(updatedTime);
+            if(updatedTime){
+              console.log(`The time you set: ${updatedTime}`);
+              database.ref('/calendar/alarmTime').set(updatedTime);
+              document.getElementById('error').innerHTML = "";
+            } else {
+              document.getElementById('error').innerHTML = "set a date dummy";
+            }
         }
 
         database.ref('/calendar/event').on("value", (snapshot) => {
@@ -65,7 +71,7 @@
               element.className = "text";
               document.getElementById("event").appendChild(element); 
 
-              console.log(key + " -> " + snapshot.val()[key]);
+              console.log(key + " is " + snapshot.val()[key]);
             }
           }
 
