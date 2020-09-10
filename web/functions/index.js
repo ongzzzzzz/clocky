@@ -8,6 +8,11 @@ admin.initializeApp();
 let rtdb = admin.database();
 let date = new Date();
 
+// TODO: get weather from accuweather
+//TODO: test these functions, change back 1 hour after u test
+// TODO: get these data in clocky
+//TODO: update webapp  
+
 function checkStatus(res) {
     if (res.ok) { // res.status >= 200 && res.status < 300
         return res.json();
@@ -16,22 +21,16 @@ function checkStatus(res) {
     }
 }
 
-exports.updateData = functions.pubsub.schedule('every 1 minute').onRun((context) => {
+exports.updateData = functions.pubsub.schedule('every 5 minutes').onRun((context) => {
 
     let dateRN = date.getFullYear() + "-" + (("0" + (date.getMonth() + 1)).slice(-2)) + "-" + (("0" + date.getDate()).slice(-2));
     let timeRN = date.getHours() + ":" + date.getMinutes() + ":" + date.getSeconds();
 
-    try{
-        rtdb.ref('calendar/accuracy').set({
-            dateNow:dateRN,
-            timeNow:timeRN,
-        })
-    } catch(e){ console.error(e); }
-
-    // TODO: get weather from accuweather
-    //TODO: test these functions, change back 1 hour after u test
-    // TODO: get these data in clocky
-    //TODO: update webapp  
+    rtdb.ref('calendar/accuracy').set({
+        dateNow:dateRN,
+        timeNow:timeRN,
+    }).catch(e => console.log(e));
+    
 
     fetch('http://dataservice.accuweather.com/currentconditions/v1/234975?apikey=HuptOIEbq28g99YeSniD2juuFb8a2Btj')
         .then(checkStatus)
@@ -46,9 +45,10 @@ exports.updateData = functions.pubsub.schedule('every 1 minute').onRun((context)
                 WeatherText:json[0].WeatherText,
                 
             }).then(_=>{console.log('Weather Updated');});
+            return null;
         })
-        .catch(e=>{
-            console.log(e)
+        .catch(e => {
+            console.log(e);
         });
     
     return null;
@@ -63,36 +63,3 @@ exports.updateData = functions.pubsub.schedule('every 1 minute').onRun((context)
 //   functions.logger.info("Hello logs!", {structuredData: true});
 //   response.send("Hello from Firebase!");
 // });
-
-
-
-
-//let date = new Date();
-
-// // current date
-// // adjust 0 before single digit date
-// let date = ("0" + date.getDate()).slice(-2);
-
-// // current month
-// let month = ("0" + (date.getMonth() + 1)).slice(-2);
-
-// // current year
-// let year = date.getFullYear();
-
-// // current hours
-// let hours = date.getHours();
-
-// // current minutes
-// let minutes = date.getMinutes();
-
-// // current seconds
-// let seconds = date.getSeconds();
-
-// // prints date in YYYY-MM-DD format
-// console.log(year + "-" + month + "-" + date);
-
-// // prints date & time in YYYY-MM-DD HH:MM:SS format
-// console.log(year + "-" + month + "-" + date + " " + hours + ":" + minutes + ":" + seconds);
-
-// // prints time in HH:MM format
-// console.log(hours + ":" + minutes);
