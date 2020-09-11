@@ -6,8 +6,9 @@ const fetch = require('node-fetch');
 
 admin.initializeApp();
 let rtdb = admin.database();
-let date = new Date();
+let date = new Date().toLocaleString('en-US', { timeZone: 'Asia/Kuala_Lumpur' });
 
+console.log(`Malaysia time now is ${date}`);
 // TODO: get weather from accuweather
 //TODO: test these functions, change back 1 hour after u test
 // TODO: get these data in clocky
@@ -23,13 +24,15 @@ function checkStatus(res) {
 
 exports.updateData = functions.pubsub.schedule('every 5 minutes').onRun((context) => {
 
-    let dateRN = date.getFullYear() + "-" + (("0" + (date.getMonth() + 1)).slice(-2)) + "-" + (("0" + date.getDate()).slice(-2));
-    let timeRN = date.getHours() + ":" + date.getMinutes() + ":" + date.getSeconds();
+    let minutes = date.getMinutes() < 10 ? "0"+date.getMinutes() : date.getMinutes();
+    let seconds = date.getSeconds() < 10 ? "0"+date.getSeconds() : date.getSeconds();
 
-    rtdb.ref('calendar/accuracy').set({
-        dateNow:dateRN,
-        timeNow:timeRN,
-    }).catch(e => console.log(e));
+    let dateRN = date.getFullYear() + "-" + (("0" + (date.getMonth() + 1)).slice(-2)) + "-" + (("0" + date.getDate()).slice(-2));
+    let timeRN = date.getHours() + ":" + minutes + ":" + seconds;
+
+    let accurator = {}; accurator["dateNow"] = dateRN; accurator["timeNow"] = timeRN;
+
+    rtdb.ref('calendar/accuracy').set(accurator).catch(e => console.log(e));
     
 
     fetch('http://dataservice.accuweather.com/currentconditions/v1/234975?apikey=HuptOIEbq28g99YeSniD2juuFb8a2Btj')

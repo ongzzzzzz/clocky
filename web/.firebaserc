@@ -1,5 +1,14 @@
 {
   "projects": {
     "default": "esp8266-f2775"
+  },
+  "targets": {
+    "esp8266-f2775": {
+      "hosting": {
+        "alarmclocky": [
+          "alarmclocky"
+        ]
+      }
+    }
   }
 }
