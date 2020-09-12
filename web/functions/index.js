@@ -24,8 +24,8 @@ function checkStatus(res) {
         throw new Error(res.statusText);
     }
 }
-
-exports.updateData = functions.pubsub.schedule('every 30 minutes').onRun((context) => {
+//exports.updateData = functions.pubsub.schedule('every 30 minutes').onRun((context) => {
+exports.updateData = functions.pubsub.schedule('every 24 hours').onRun((context) => {
     fetch('http://dataservice.accuweather.com/currentconditions/v1/234975?apikey=HuptOIEbq28g99YeSniD2juuFb8a2Btj')
         .then(checkStatus)
         .then(json => {

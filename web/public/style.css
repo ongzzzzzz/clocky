@@ -1,7 +1,8 @@
 :root{
     --background: #000000;
-    --primary: #FFFFFF;
-    --secondary: #f5ff70;
+    --primary: #fafafa;
+    --secondary: #00e1ff;
+    --tertiary: #3e4242;
 }
 
 html, body{
@@ -9,23 +10,36 @@ html, body{
     height: 100%;
     background-color: var(--background);
     font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
-    overflow: hidden;
+    overflow: scroll;
+
+    padding: 0 10px;
 }
 
 #heading{
-    position: relative;
-    left: 25%;
+    margin: 5vh auto;
 
-    width: 50%;
+    width: 75%;
     padding: 1vw;
 
-    color: var(--background);
+    color: var(--tertiary);
     background-color: var(--primary);
+
     border-radius: 696969px;
     text-align: center;
-    font-size: 3em;
+    font-size: 3vh;
 }
 
 .text{
-    color: var(--primary);
+    color: var(--tertiary);
+    font-size: 3vw;
+}
+
+.card{
+    margin: 2vh auto;
+    width: 50%;
+    display: block;
+    background-color: var(--primary);
+    padding: 1vh 7vw;
+
+    border-radius: 3vh;
 }

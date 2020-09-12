@@ -20,26 +20,35 @@
   </head>
   <body>
     <h1 id="heading">clocky website</h1>
-    <h2 class="text">currently set alarm:</h2>
-    <h3 class="text" id="currentAlarmTime">holup im getting it for ya</h3>
-    <h3 class="text" id="error"></h3>
 
-    <div id="timeRightNow" class="text"></div>
+    <div class="card">
+      <h3 class="text">current time: <span id="timeRightNow"></span> </h3>
 
-    <form>
-      <label for="alarmTime" class="text">I want to wake up at: </label>
-      <input type="time" id="alarmTime" step='1' min="00:00:00" max="23:59:59">
-      <button type="button" id="submit">wake me up!</button>
-    </form>
+      <h3 class="text">currently set alarm time: <span id="currentAlarmTime">holup im getting it for ya</span> </h3> 
+      
+      <h3 class="text" id="error"></h3>
+    </div>
 
-    <div id="event"></div>
+    
+    <div class="card">
+      <form>
+        <label for="alarmTime" class="text">I want to wake up at: </label>
+        <input type="time" id="alarmTime" step='1' min="00:00:00" max="23:59:59">
+        <button type="button" id="submit">wake me up!</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <div id="event"></div>
+    </div>
 
     <script>
       document.addEventListener('DOMContentLoaded', function() {
         console.error("oh hey why are you here");
-
+        //ref to the database
         var database = firebase.database();
 
+        //listen for changes in rtdb for AlarmTime
         database.ref('/calendar/alarmTime').on("value", (snapshot) => {
           document.getElementById('currentAlarmTime').innerHTML = snapshot.val();
           console.log(`The read returned: ${snapshot.val()}`);
@@ -47,17 +56,22 @@
           console.error(error);
         });
 
+        //if they clicked submit
         document.getElementById('submit').onclick = () => {
+          //get the submitted data
             var updatedTime = document.getElementById('alarmTime').value;
-            if(updatedTime){
+            if(updatedTime){ //if it is truthy
               console.log(`The time you set: ${updatedTime}`);
               database.ref('/calendar/alarmTime').set(updatedTime);
+
+              //no errors
               document.getElementById('error').innerHTML = "";
             } else {
               document.getElementById('error').innerHTML = "set a date dummy";
             }
         }
 
+        //listen for changes of Google Calendar events
         database.ref('/calendar/event').on("value", (snapshot) => {
           document.getElementById('event').innerHTML = "";
           console.log(`What i got was `);
@@ -80,6 +94,7 @@
         startTime();
       });
 
+      //real time clock in the website for reference
       function startTime() {
         var today = new Date();
         var h = today.getHours();
