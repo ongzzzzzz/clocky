@@ -87,6 +87,19 @@ exports.updateData = functions.pubsub.schedule('every 45 minutes').onRun((contex
     return null;
 })
 
+//[{
+//"LocalObservationDateTime":"2020-09-15T18:55:00+08:00",
+//"EpochTime":1600167300,
+//"WeatherText":"Partly sunny",
+//"WeatherIcon":3,
+//"HasPrecipitation":false,
+//"PrecipitationType":null,
+//"IsDayTime":true,
+//"Temperature": {"Metric":{"Value":30.0,"Unit":"C","UnitType":17},
+//              "Imperial":{"Value":86.0,"Unit":"F","UnitType":18}},
+//"MobileLink":"http://m.accuweather.com/en/my/george-town/234975/current-weather/234975?lang=en-us",
+//"Link":"http://www.accuweather.com/en/my/george-town/234975/current-weather/234975?lang=en-us"
+//}]
 
 
 // // Create and Deploy Your First Cloud Functions
