@@ -36,13 +36,28 @@ exports.updateData = functions.pubsub.schedule('every 45 minutes').onRun((contex
             if(json.length){
                 //init a new datetime, epochtime in milliseconds
                 //add timezone offset too
-                let time = new Date((json[0].EpochTime)*1000);
+
+                let timeZone = "+0800";
+
+                rtdb.ref('calendar/timeZone').once('value').then((snapshot) => {
+                    console.log(`The timeZone received: ${snapshot.val()}`);
+                    timeZone = snapshot.val();
+                }).catch(e => console.log(e));
+            
+                var timeZoneHour = parseInt(timeZone.substring(1, 3));
+                var timeZoneMinutes = parseInt(timeZone.substring(3, 5));
+                var timeZoneMilliSecondsOffset = (timeZoneHour*3600 + timeZoneMinutes*60) * 1000;
+                console.log(`tzHour: ${timeZoneHour}, tzMinute: ${timeZoneMinutes}, tzmsOffset: ${timeZoneMilliSecondsOffset}`);
+
+                let time = new Date(((json[0].EpochTime)*1000) + timeZoneMilliSecondsOffset);
                 //epic YYYY-MM-DD format
                 var dateRN = time.getFullYear() + "-" + (("0" + (time.getMonth() + 1)).slice(-2)) + "-" + (("0" + time.getDate()).slice(-2));
                 //le hh:mm:ss format
                 let minutes = time.getMinutes() < 10 ? "0"+time.getMinutes() : time.getMinutes();
                 let seconds = time.getSeconds() < 10 ? "0"+time.getSeconds() : time.getSeconds();
                 var timeRN = time.getHours() + ":" + minutes + ":" + seconds;
+
+                
 
                 //set the weather first
                 return rtdb.ref('calendar/weather').set({
