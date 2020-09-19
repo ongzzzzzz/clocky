@@ -1,7 +1,8 @@
 //10Sep
 
 //important
-//get time from firebase to readjust itself every hour https://github.com/scanlime/esp8266-Arduino/blob/master/tests/Time/Time.ino
+//show events (what from when to when)
+//show temperature and weather (add to printEvents() function)
 //get alarm time every midnight
 //get cal data from firebase at midnight or event end  (use ||)
 
@@ -13,7 +14,6 @@
 
 
 //todo:
-//get weather from accuweather https://github.com/ImJustChew/cec-iclock/blob/master/functions/index.js
 //cloud function + calendar https://developers.google.com/calendar/quickstart/js
 //setup google auth so clocky can mass produce, not just for ur firebase acc
 //optimize firebase / zapier to efficiency when get data
@@ -28,7 +28,9 @@
 //scrolling text
 //complete PCB, program from PCB
 //interface for changing alarm time, 
-//parse the cacat google calendar time
+//parse the cacat google calendar time (done with substrings)
+//get weather from accuweather https://github.com/ImJustChew/cec-iclock/blob/master/functions/index.js
+//get time from firebase to readjust itself every 45 mins (need test) https://github.com/scanlime/esp8266-Arduino/blob/master/tests/Time/Time.ino
 
 // discontinued ideas
 //use buttons to adjust alarm
@@ -102,7 +104,7 @@ String alarmTime = "";
 
 bool alarmState = 0;
 
-byte Left[] = {
+byte leftPattern[] = {
   B01010,
   B10101,
   B01010,
@@ -113,7 +115,7 @@ byte Left[] = {
   B10101
 };
 
-byte Right[] = {
+byte rightPattern[] = {
   B10101,
   B01010,
   B10101,
@@ -124,18 +126,71 @@ byte Right[] = {
   B01010
 };
 
+byte Arm[] = {
+  B00001,
+  B00001,
+  B00001,
+  B00010,
+  B00010,
+  B00100,
+  B01000,
+  B00000
+};
+
+byte Eye[] = {
+  B00000,
+  B01110,
+  B10011,
+  B10111,
+  B11111,
+  B01110,
+  B00000,
+  B00000
+};
+
+byte Mouth[] = {
+  B00000,
+  B00000,
+  B01110,
+  B01010,
+  B00010,
+  B00010,
+  B01100,
+  B00000
+};
+
+byte Star[] = {
+  B00000,
+  B00100,
+  B00100,
+  B01010,
+  B10101,
+  B01010,
+  B00100,
+  B00100
+};
+
+
 //alarm time
 //DateTime actualTime;
 int shiftedIndexes = 0;
 String message = "";
+
+DateTime before45Mins;
 
 void setup (){
   Serial.begin(115200);
 
   lcd.begin(16, 2);  
   lcd.init();
-  lcd.createChar(6, Left);
-  lcd.createChar(9, Right);
+
+  lcd.createChar(0, leftPattern);
+  lcd.createChar(1, rightPattern);
+  lcd.createChar(2, Arm);
+  lcd.createChar(3, Eye);
+  lcd.createChar(4, Mouth);
+  lcd.createChar(5, Star);
+  
   lcd.backlight();
   lcd.setCursor(0,0);
   lcd.print("connecting......");
@@ -169,20 +224,19 @@ void setup (){
   pinMode(StopSW, INPUT_PULLUP); //StopSW
   pinMode(StopSWLED, OUTPUT); //StopSWLED
 
-  getAlarmTime();
-
   //get some message on startup
+  getAlarmTime();
   updateEventsFromFirebase();
+
+  before45Mins = rtc.now();
+  
   lcd.clear();
 }
 
 void loop (){
   DateTime now = rtc.now();
-//  actualTime = now + TimeSpan(0,0,4,31);
   
   showDate(now);
-  
-//  checkEvents(actualTime);
 
   char rightNow[] = "hh:mm:ss";
   char dateRightNow[] = "YYYY-MM-DD";
@@ -197,6 +251,7 @@ void loop (){
 
   if((stringyTime == "00:00:00") || ((stringyDate == endsDate) && (stringyTime == endsTime))){
     updateEventsFromFirebase();
+    getAlarmTime();
   }
   
   if((stringyTime == alarmTime) && (alarmState == 0)){
@@ -212,13 +267,12 @@ void loop (){
   digitalWrite(alarm, alarmState);
   digitalWrite(StopSWLED, alarmState);
 
-  Serial.print(rtc.getTemperature());
-  Serial.println(" C");
-
   printEvents(message, shiftedIndexes);
   //scrolling mechanism
   if(shiftedIndexes > message.length()){
     shiftedIndexes = 0;
+    printKaomoji();
+    
   } else{
     shiftedIndexes++;
   }  
@@ -229,16 +283,57 @@ void loop (){
   Serial.println(endsTime);
   Serial.println("-----------------------------------------------------------------------------------");
 
+  adjustTimeFromFirebase(now);
   delay(1000);
   lcd.clear();
+}
+
+void adjustTimeFromFirebase(DateTime theTime){
+
+  String dateRN = "";
+  String timeRN = "";
+  char dateFormat[] = "YYYY-MM-DD";
+  char timeFormat[] = "hh:mm:ss";
+
+  if((theTime - TimeSpan(0,45,0,0)) == before45Mins){
+    Serial.println("ok im starting callibreting!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+    if (Firebase.getString(firebaseData, "/calendar/accuracy/dateNow")){
+      dateRN = firebaseData.stringData();
+    } else {
+      Serial.print("Error in getString: ");
+      Serial.println(firebaseData.errorReason());
+    } 
+    if (Firebase.getString(firebaseData, "/calendar/accuracy/timeNow")){
+      timeRN = firebaseData.stringData();
+    } else {
+      Serial.print("Error in getString: ");
+      Serial.println(firebaseData.errorReason());
+    }
+
+    if(
+      (String(theTime.toString(timeFormat)) != timeRN) || 
+      (String(theTime.toString(dateFormat)) != dateRN)
+    ){
+      rtc.adjust(DateTime(
+        (dateRN.substring(0,4)).toInt(),
+        (dateRN.substring(5,7)).toInt(),
+        (dateRN.substring(8,11)).toInt(),
+        (timeRN.substring(0,2)).toInt(),
+        (timeRN.substring(3,5)).toInt(),
+        (timeRN.substring(6,8)).toInt()
+      ));
+    }
+    
+    before45Mins = theTime;
+  }
+  
 }
 
 void printEvents(String message, int shiftedIndexes){
   String toPrint = "";
   toPrint += message.substring(shiftedIndexes, (shiftedIndexes+16));
-  toPrint += " " + String(rtc.getTemperature()).substring(0,2) + (char)223 + "C";  
-//  toPrint += message.substring(shiftedIndexes, message.length());
-//  toPrint += message.substring(0, shiftedIndexes);
+//  toPrint += " " + String(rtc.getTemperature()).substring(0,2) + (char)223 + "C";  
+//add firebase weather, event start and end
 
   lcd.setCursor(0, 1);
   lcd.print(toPrint);
@@ -250,8 +345,8 @@ void showDate(DateTime dt){
   lcd.setCursor(0, 0);
   lcd.print(dt.toString(Date));
   
-  lcd.write(6);
-  lcd.write(9);
+  lcd.write(byte(0));
+  lcd.write(1);
   
   char TimeRN[] = "hh:mm:ss";
   lcd.print(dt.toString(TimeRN));
@@ -291,6 +386,18 @@ void updateEventsFromFirebase(){
   }
 }
 
+void printKaomoji(){
+  //(ﾉ◕ヮ◕)ﾉ✧
+  lcd.setCursor(0,1);
+  lcd.print("(");
+  lcd.write(2); //arm
+  lcd.write(3); //eye
+  lcd.write(4); //mouth
+  lcd.write(3); //eye
+  lcd.print(")");
+  lcd.write(2); //arm
+  lcd.write(5); //star
+}
 
 //----------------------------------------------- RANDOM CODES I DIDNT WANT TO DELETE -----------------------------------------------
 //  lcd.autoscroll();
@@ -340,6 +447,21 @@ void updateEventsFromFirebase(){
 //    Serial.println(today + ": " + summary + " from " + begins + " to " + ends);
 //  }
 //}
+
+//  String timetest = theTime.toString(timeFormat);
+//  String datetest = theTime.toString(dateFormat);
+//  Serial.print("year: ");
+//  Serial.println(datetest.substring(0,4));
+//  Serial.print("month: ");
+//  Serial.println(datetest.substring(5,7));
+//  Serial.print("day: ");
+//  Serial.println(datetest.substring(8,11));
+//  Serial.print("hour: ");
+//  Serial.println(timetest.substring(0,2));
+//  Serial.print("minute: ");
+//  Serial.println(timetest.substring(3,5));
+//  Serial.print("second: ");
+//  Serial.println(timetest.substring(6,8));
 
 /////////////////////////////////////////////////// references to the bottom ///////////////////////////////////////////////////
 
