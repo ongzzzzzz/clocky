@@ -1,10 +1,12 @@
 //10Sep
 
 //important
-//show events (what from when to when)
+//show events (what from when to when) dipsplay beginsDate, beginsTime, endsDate endsTime, weather
 //show temperature and weather (add to printEvents() function)
 //get alarm time every midnight
 //get cal data from firebase at midnight or event end  (use ||)
+//get NTP time to callibrate
+//auto connect wifi https://www.esp8266.com/viewtopic.php?p=85276
 
 //optimise the JS webapp for it
 //get all data from firebase and print it prettily on LCD (everything)
@@ -15,6 +17,7 @@
 
 //todo:
 //cloud function + calendar https://developers.google.com/calendar/quickstart/js
+//be able to change location of weather easily
 //setup google auth so clocky can mass produce, not just for ur firebase acc
 //optimize firebase / zapier to efficiency when get data
 //refactor, dun use so much char day[] things 
@@ -30,11 +33,13 @@
 //interface for changing alarm time, 
 //parse the cacat google calendar time (done with substrings)
 //get weather from accuweather https://github.com/ImJustChew/cec-iclock/blob/master/functions/index.js
-//get time from firebase to readjust itself every 45 mins (need test) https://github.com/scanlime/esp8266-Arduino/blob/master/tests/Time/Time.ino
+
 
 // discontinued ideas
 //use buttons to adjust alarm
 //save alarm time in EEPROM
+//get time from firebase to readjust itself every 45 mins (need test) https://github.com/scanlime/esp8266-Arduino/blob/master/tests/Time/Time.ino
+
 
 // RTC 3V/5V , LCD 5V
 // Buzzer 5V
@@ -75,7 +80,8 @@
 #include "FirebaseESP8266.h"
 #include <LiquidCrystal_I2C.h>
 #include <ESP8266WiFi.h>
-#include <EEPROM.h>
+#include <NTPClient.h>
+#include <WiFiUdp.h>
 
 #define FIREBASE_HOST "esp8266-f2775.firebaseio.com"
 #define FIREBASE_AUTH "EQ0xXkArCNnNnDlrd7kxaroYoTULU1lZgDPLtD9L"
@@ -92,17 +98,16 @@ LiquidCrystal_I2C lcd(0x27, 16, 2);
 RTC_DS3231 rtc;
 
 String summary = "";
-String begins = "";
-String beginsDate = "";
-String beginsTime = "";
+String begins, beginsDate, beginsTime = "";
+String ends, endsDate, endsTime = "";
 
-String ends = "";
-String endsDate = "";
-String endsTime  = "";
+String weatherNow, temperature, hasPrecipitation, precipitationType = "";
 
 String alarmTime = "";
 
 bool alarmState = 0;
+
+int utcOffsetSeconds = 0;
 
 byte leftPattern[] = {
   B01010,
@@ -177,6 +182,8 @@ int shiftedIndexes = 0;
 String message = "";
 
 DateTime before45Mins;
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP, "pool.ntp.org", 0);
 
 void setup (){
   Serial.begin(115200);
@@ -213,12 +220,7 @@ void setup (){
     Serial.println("Couldn't find RTC");
     while (1);
   }
-  
-//  if (rtc.lostPower()) {
-//    rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
-//  }
-
-  rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+//  rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
   
   pinMode(alarm, OUTPUT);      //buzzer
   pinMode(StopSW, INPUT_PULLUP); //StopSW
@@ -227,8 +229,11 @@ void setup (){
   //get some message on startup
   getAlarmTime();
   updateEventsFromFirebase();
+  getUtcOffset();
 
   before45Mins = rtc.now();
+  timeClient.begin();
+  callibrateRtc();
   
   lcd.clear();
 }
@@ -267,12 +272,12 @@ void loop (){
   digitalWrite(alarm, alarmState);
   digitalWrite(StopSWLED, alarmState);
 
-  printEvents(message, shiftedIndexes);
+  String displayThis = message;
+  printEvents(displayThis, shiftedIndexes);
   //scrolling mechanism
   if(shiftedIndexes > message.length()){
     shiftedIndexes = 0;
     printKaomoji();
-    
   } else{
     shiftedIndexes++;
   }  
@@ -283,57 +288,64 @@ void loop (){
   Serial.println(endsTime);
   Serial.println("-----------------------------------------------------------------------------------");
 
-  adjustTimeFromFirebase(now);
+  if((now - TimeSpan(0,45,0,0)) == before45Mins){
+    getWeather();
+    Serial.println("45 MINUTES ALREADYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY");
+    before45Mins = now;
+    callibrateRtc();
+  }
+  
   delay(1000);
   lcd.clear();
 }
 
-void adjustTimeFromFirebase(DateTime theTime){
+void callibrateRtc(){
+  timeClient.update();
 
-  String dateRN = "";
-  String timeRN = "";
-  char dateFormat[] = "YYYY-MM-DD";
-  char timeFormat[] = "hh:mm:ss";
+  DateTime shouldBeAccurate = (timeClient.getEpochTime() + (utcOffsetSeconds*1000));
+  rtc.adjust(shouldBeAccurate);
 
-  if((theTime - TimeSpan(0,45,0,0)) == before45Mins){
-    Serial.println("ok im starting callibreting!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-    if (Firebase.getString(firebaseData, "/calendar/accuracy/dateNow")){
-      dateRN = firebaseData.stringData();
-    } else {
-      Serial.print("Error in getString: ");
-      Serial.println(firebaseData.errorReason());
-    } 
-    if (Firebase.getString(firebaseData, "/calendar/accuracy/timeNow")){
-      timeRN = firebaseData.stringData();
-    } else {
-      Serial.print("Error in getString: ");
-      Serial.println(firebaseData.errorReason());
-    }
+  Serial.println("I CALLIBRATED THE THING I CALLIBRATED THE THING I CALLIBRATED THE THING I CALLIBRATED THE THING I CALLIBRATED THE THING ");
+}
 
-    if(
-      (String(theTime.toString(timeFormat)) != timeRN) || 
-      (String(theTime.toString(dateFormat)) != dateRN)
-    ){
-      rtc.adjust(DateTime(
-        (dateRN.substring(0,4)).toInt(),
-        (dateRN.substring(5,7)).toInt(),
-        (dateRN.substring(8,11)).toInt(),
-        (timeRN.substring(0,2)).toInt(),
-        (timeRN.substring(3,5)).toInt(),
-        (timeRN.substring(6,8)).toInt()
-      ));
+void getWeather(){
+  if (Firebase.getString(firebaseData, "/calendar/weather/weatherNow")){
+    weatherNow = firebaseData.stringData();
+  } else {
+    Serial.print("Error in getString: ");
+    Serial.println(firebaseData.errorReason());
+  }
+  if (Firebase.getString(firebaseData, "/calendar/weather/tempCelsius")){
+    temperature = firebaseData.stringData();
+  } else {
+    Serial.print("Error in getString: ");
+    Serial.println(firebaseData.errorReason());
+  }
+  if (Firebase.getBool(firebaseData, "/calendar/weather/hasPrecipitation")){
+    hasPrecipitation = firebaseData.boolData();
+    
+    if(hasPrecipitation){
+      if (Firebase.getString(firebaseData, "/calendar/weather/precipitationType")){
+        precipitationType = firebaseData.stringData();
+      } else {
+        Serial.print("Error in getString: ");
+        Serial.println(firebaseData.errorReason());
+      }
     }
     
-    before45Mins = theTime;
+  } else {
+    Serial.print("Error in getBool: ");
+    Serial.println(firebaseData.errorReason());
   }
   
 }
 
-void printEvents(String message, int shiftedIndexes){
+void printEvents(String sentence, int shiftedIndexes){
   String toPrint = "";
-  toPrint += message.substring(shiftedIndexes, (shiftedIndexes+16));
+  toPrint += sentence.substring(shiftedIndexes, (shiftedIndexes+16));
 //  toPrint += " " + String(rtc.getTemperature()).substring(0,2) + (char)223 + "C";  
 //add firebase weather, event start and end
+//if hasPrecipitataion == true, print It will ${precipitationType}
 
   lcd.setCursor(0, 1);
   lcd.print(toPrint);
@@ -357,6 +369,15 @@ void getAlarmTime(){
     alarmTime = firebaseData.stringData();
   } else {
     Serial.print("Error in getString: ");
+    Serial.println(firebaseData.errorReason());
+  }
+}
+
+void getUtcOffset(){
+  if (Firebase.getInt(firebaseData, "/calendar/utcOffsetSeconds")){
+    utcOffsetSeconds = firebaseData.intData();
+  } else {
+    Serial.print("Error in getInt: ");
     Serial.println(firebaseData.errorReason());
   }
 }
@@ -462,6 +483,38 @@ void printKaomoji(){
 //  Serial.println(timetest.substring(3,5));
 //  Serial.print("second: ");
 //  Serial.println(timetest.substring(6,8));
+
+//  String dateRN = "";
+//  String timeRN = "";
+//  char dateFormat[] = "YYYY-MM-DD";
+//  char timeFormat[] = "hh:mm:ss";
+//  if((theTime - TimeSpan(0,45,0,0)) == before45Mins){
+//    Serial.println("ok im starting callibreting!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+//    if (Firebase.getString(firebaseData, "/calendar/accuracy/dateNow")){
+//      dateRN = firebaseData.stringData();
+//    } else {
+//      Serial.print("Error in getString: ");
+//      Serial.println(firebaseData.errorReason());
+//    } 
+//    if (Firebase.getString(firebaseData, "/calendar/accuracy/timeNow")){
+//      timeRN = firebaseData.stringData();
+//    } else {
+//      Serial.print("Error in getString: ");
+//      Serial.println(firebaseData.errorReason());
+//    }
+//    if(
+//      (String(theTime.toString(timeFormat)) != timeRN) || 
+//      (String(theTime.toString(dateFormat)) != dateRN)
+//    ){
+//      rtc.adjust(DateTime(
+//        (dateRN.substring(0,4)).toInt(),
+//        (dateRN.substring(5,7)).toInt(),
+//        (dateRN.substring(8,11)).toInt(),
+//        (timeRN.substring(0,2)).toInt(),
+//        (timeRN.substring(3,5)).toInt(),
+//        (timeRN.substring(6,8)).toInt()
+//      ));
+//    }
 
 /////////////////////////////////////////////////// references to the bottom ///////////////////////////////////////////////////
 
