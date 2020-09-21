@@ -1,19 +1,17 @@
-//10Sep
+//21Sep
 
 //important
-//show events (what from when to when) dipsplay beginsDate, beginsTime, endsDate endsTime, weather
-//show temperature and weather (add to printEvents() function)
-//get alarm time every midnight
-//get cal data from firebase at midnight or event end  (use ||)
-//get NTP time to callibrate
+//cloud functions add utc offset in seconds
+//control backlight and LED on LEDSW
 //auto connect wifi https://www.esp8266.com/viewtopic.php?p=85276
 
 //optimise the JS webapp for it
-//get all data from firebase and print it prettily on LCD (everything)
-//control backlight and LED on LEDSW
-//battery system
+//battery system (charging)
 //finalise outer casing
 
+//needs working confirmation:
+//get NTP time to callibrate
+//get cal data from firebase at midnight or event end  (use ||)
 
 //todo:
 //cloud function + calendar https://developers.google.com/calendar/quickstart/js
@@ -33,6 +31,9 @@
 //interface for changing alarm time, 
 //parse the cacat google calendar time (done with substrings)
 //get weather from accuweather https://github.com/ImJustChew/cec-iclock/blob/master/functions/index.js
+//show events (what from when to when) dipsplay beginsDate, beginsTime, endsDate endsTime, weather
+//show temperature and weather (add to printEvents() function)
+//get alarm time every 45 mins
 
 
 // discontinued ideas
@@ -101,7 +102,9 @@ String summary = "";
 String begins, beginsDate, beginsTime = "";
 String ends, endsDate, endsTime = "";
 
-String weatherNow, temperature, hasPrecipitation, precipitationType = "";
+String weatherNow, precipitationType = "";
+bool hasPrecipitation;
+float temperature;
 
 String alarmTime = "";
 
@@ -175,15 +178,14 @@ byte Star[] = {
   B00100
 };
 
-
-//alarm time
-//DateTime actualTime;
-int shiftedIndexes = 0;
-String message = "";
-
 DateTime before45Mins;
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "pool.ntp.org", 0);
+
+String messages[] = { "", "" };
+
+int shiftedIndexes = 0;
+String displayThis = messages[0];
 
 void setup (){
   Serial.begin(115200);
@@ -201,6 +203,8 @@ void setup (){
   lcd.backlight();
   lcd.setCursor(0,0);
   lcd.print("connecting......");
+  lcd.setCursor(0,1);
+  printKaomoji();
 
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   Serial.print("Connecting to Wi-Fi");
@@ -220,18 +224,21 @@ void setup (){
     Serial.println("Couldn't find RTC");
     while (1);
   }
-//  rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
   
   pinMode(alarm, OUTPUT);      //buzzer
   pinMode(StopSW, INPUT_PULLUP); //StopSW
   pinMode(StopSWLED, OUTPUT); //StopSWLED
 
-  //get some message on startup
+  //get some data on startup
   getAlarmTime();
   updateEventsFromFirebase();
+  getWeather();
   getUtcOffset();
 
+  displayThis = messages[0];
+
   before45Mins = rtc.now();
+  
   timeClient.begin();
   callibrateRtc();
   
@@ -272,14 +279,26 @@ void loop (){
   digitalWrite(alarm, alarmState);
   digitalWrite(StopSWLED, alarmState);
 
-  String displayThis = message;
-  printEvents(displayThis, shiftedIndexes);
+/* String summary = "";
+String begins, beginsDate, beginsTime = "";
+String ends, endsDate, endsTime = ""; */
+
+  
+  printScrollingStuff(displayThis, shiftedIndexes);
+  
   //scrolling mechanism
-  if(shiftedIndexes > message.length()){
+  if(shiftedIndexes > displayThis.length()-1){
     shiftedIndexes = 0;
-    printKaomoji();
+    if(displayThis == messages[0]){
+      displayThis = messages[1];
+    } else {
+      displayThis = messages[0];
+    }
+    
   } else{
     shiftedIndexes++;
+    Serial.print("WHATS BEING DISPLAYED RN: ");
+    Serial.println(displayThis);
   }  
 
   Serial.print("end date: ");
@@ -290,6 +309,7 @@ void loop (){
 
   if((now - TimeSpan(0,45,0,0)) == before45Mins){
     getWeather();
+    getAlarmTime();
     Serial.println("45 MINUTES ALREADYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY");
     before45Mins = now;
     callibrateRtc();
@@ -315,8 +335,8 @@ void getWeather(){
     Serial.print("Error in getString: ");
     Serial.println(firebaseData.errorReason());
   }
-  if (Firebase.getString(firebaseData, "/calendar/weather/tempCelsius")){
-    temperature = firebaseData.stringData();
+  if (Firebase.getFloat(firebaseData, "/calendar/weather/tempCelsius")){
+    temperature = firebaseData.floatData();
   } else {
     Serial.print("Error in getString: ");
     Serial.println(firebaseData.errorReason());
@@ -327,10 +347,15 @@ void getWeather(){
     if(hasPrecipitation){
       if (Firebase.getString(firebaseData, "/calendar/weather/precipitationType")){
         precipitationType = firebaseData.stringData();
+
+        messages[1] = "Today: " + weatherNow + " " + String(temperature) + (char)223 + "C with " + precipitationType;
+        
       } else {
         Serial.print("Error in getString: ");
         Serial.println(firebaseData.errorReason());
       }
+    } else {
+      messages[1] = "Today: " + weatherNow + " " + String(temperature) + (char)223 + "C";
     }
     
   } else {
@@ -340,12 +365,9 @@ void getWeather(){
   
 }
 
-void printEvents(String sentence, int shiftedIndexes){
+void printScrollingStuff(String sentence, int shiftedIndexes){
   String toPrint = "";
   toPrint += sentence.substring(shiftedIndexes, (shiftedIndexes+16));
-//  toPrint += " " + String(rtc.getTemperature()).substring(0,2) + (char)223 + "C";  
-//add firebase weather, event start and end
-//if hasPrecipitataion == true, print It will ${precipitationType}
 
   lcd.setCursor(0, 1);
   lcd.print(toPrint);
@@ -384,7 +406,7 @@ void getUtcOffset(){
 
 void updateEventsFromFirebase(){
   if (Firebase.getString(firebaseData, "/calendar/event/summary")){
-    message = firebaseData.stringData();
+    summary = firebaseData.stringData();
   } else {
     Serial.print("Error in getString: ");
     Serial.println(firebaseData.errorReason());
@@ -405,6 +427,8 @@ void updateEventsFromFirebase(){
     Serial.print("Error in getString: ");
     Serial.println(firebaseData.errorReason());
   }
+
+  messages[0] = summary + " from " + beginsTime + " to " + endsTime;
 }
 
 void printKaomoji(){
