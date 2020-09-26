@@ -1,16 +1,15 @@
-//21Sep
+//26Sep
 
 //important
-//cloud functions add utc offset in seconds
+//tweak the weather display
+//cases where google cal only put date and no time
 //control backlight and LED on LEDSW
-//auto connect wifi https://www.esp8266.com/viewtopic.php?p=85276
-
-//optimise the JS webapp for it
 //battery system (charging)
+
+//optimise the JS webapp for it (add firebase auth)
 //finalise outer casing
 
 //needs working confirmation:
-//get NTP time to callibrate
 //get cal data from firebase at midnight or event end  (use ||)
 
 //todo:
@@ -34,7 +33,9 @@
 //show events (what from when to when) dipsplay beginsDate, beginsTime, endsDate endsTime, weather
 //show temperature and weather (add to printEvents() function)
 //get alarm time every 45 mins
-
+//auto connect wifi 
+//cloud functions add utc offset in seconds
+//get NTP time to callibrate
 
 // discontinued ideas
 //use buttons to adjust alarm
@@ -221,10 +222,6 @@ void setup (){
     Serial.print(SSIDs[k]);
     Serial.println(PASSs[k]);      
   }
-//  wifiMulti.addAP("CEC", "CEC_2018");
-//  wifiMulti.addAP("ZONGZ", "zz12343705");
-//  wifiMulti.addAP("CLPHS_Library", "askard533");
-
   
   while (wifiMulti.run() != WL_CONNECTED){
     Serial.print(".");
