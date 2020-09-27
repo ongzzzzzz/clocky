@@ -105,10 +105,12 @@
         }
 
         document.getElementById('timeZoneSubmit').onclick = () => {
-          var selectedTZ = document.getElementById('timeZone').value;
+          var selectedTZ = String(document.getElementById('timeZone').value) + "B";
+          //+0800B
+          var utcOffsetSeconds = (3600 * parseInt(selectedTZ.substring(0, 3))) + (60 * parseInt(selectedTZ.substring(3, 5)));
           if(selectedTZ){
-            database.ref('/calendar/timeZone').set(selectedTZ);
-            alert(`i set ur timezone to ${selectedTZ}!`);
+            database.ref('/calendar/utcOffsetSeconds').set(utcOffsetSeconds);
+            alert(`i set ur timezone to ${utcOffsetSeconds}!`);
           } else {
             alert(`plez chose 1 tiemzon thenk`);
           }
