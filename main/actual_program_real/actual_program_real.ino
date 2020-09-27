@@ -36,6 +36,7 @@
 //auto connect wifi 
 //cloud functions add utc offset in seconds
 //get NTP time to callibrate
+//utcOffsetSeconds in jswebapp
 
 // discontinued ideas
 //use buttons to adjust alarm
