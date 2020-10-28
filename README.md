@@ -1,3 +1,13 @@
-# clocky
+# clocky ⏰
+## A Firebase and Google Calendar Alarm Clock!
 
-## arduino and stack-overflow-nodejs
+# Schematics
+
+# PCB
+
+# 3D Design
+
+# Flowchart
+
+# Setup
+
