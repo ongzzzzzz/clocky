@@ -99,19 +99,31 @@
 #define StopSW 14 //D5
 #define StopSWLED 12 //D6  
 
-String summary = "";
-String begins, beginsDate, beginsTime = "";
-String ends, endsDate, endsTime = "";
+String  alarmTime,
+        summary, begins, beginsDate, beginsTime, 
+        ends, endsDate, endsTime, 
+        weatherNow, precipitationType = "";
 
-String weatherNow, precipitationType = "";
 bool hasPrecipitation;
 float temperature;
-
-String alarmTime = "";
-
 bool alarmState = 0;
-
 int utcOffsetSeconds = 0;
+
+FirebaseData firebaseData;
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+RTC_DS3231 rtc;
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP, "pool.ntp.org", 0);
+ESP8266WiFiMulti wifiMulti;
+DateTime before45Mins;
+
+String messages[] = { "", "" };
+
+char* SSIDs[] = { "ZONGZ" , "CEC" , "CLPHS_Library" , "OFF-ADMIN_WIFI" , "ongzz"};
+char* PASSs[] = { "zz12343705" , "CEC_2018" , "askard533" , "clp8283655" , "FOGEINATOR"};
+
+int shiftedIndexes = 0;
+String displayThis = messages[0];
 
 byte leftPattern[] = {
   B01010,
@@ -179,22 +191,7 @@ byte Star[] = {
   B00100
 };
 
-FirebaseData firebaseData;
-LiquidCrystal_I2C lcd(0x27, 16, 2);
-RTC_DS3231 rtc;
-WiFiUDP ntpUDP;
-NTPClient timeClient(ntpUDP, "pool.ntp.org", 0);
-ESP8266WiFiMulti wifiMulti;
 
-DateTime before45Mins;
-
-String messages[] = { "", "" };
-
-char* SSIDs[] = { "ZONGZ" , "CEC" , "CLPHS_Library" , "OFF-ADMIN_WIFI" };
-char* PASSs[] = { "zz12343705" , "CEC_2018" , "askard533" , "clp8283655" };
-
-int shiftedIndexes = 0;
-String displayThis = messages[0];
 
 void setup (){
   Serial.begin(115200);
@@ -278,7 +275,10 @@ void loop (){
   Serial.print("the date rn: ");
   Serial.println(stringyDate);
 
-  if((stringyTime == "00:00:00") || ((stringyDate == endsDate) && (stringyTime == endsTime))){
+  if(
+    (stringyTime == "00:00:00") || 
+    ((stringyDate == endsDate) && (stringyTime == endsTime))
+  ){
     updateEventsFromFirebase();
     getAlarmTime();
   }
@@ -447,7 +447,11 @@ void updateEventsFromFirebase(){
     Serial.println(firebaseData.errorReason());
   }
 
-  messages[0] = summary + " from " + beginsTime + " to " + endsTime;
+  if(beginsTime.length()){
+    messages[0] = summary + " from " + beginsTime + " to " + endsTime;
+  } else{
+    messages[0] = summary;
+  }
 }
 
 void printKaomoji(){
