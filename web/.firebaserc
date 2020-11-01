@@ -7,6 +7,9 @@
       "hosting": {
         "alarmclocky": [
           "alarmclocky"
+        ],
+        "oldtowneats": [
+          "oldtowneats"
         ]
       }
     }
