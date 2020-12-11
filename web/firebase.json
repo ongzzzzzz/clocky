@@ -42,6 +42,21 @@
           "destination": "/index.html"
         }
       ]
+    },
+    {
+      "target": "cecklesf",
+      "public": "public/cecklesf",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ],
+      "rewrites": [
+        {
+          "source": "**",
+          "destination": "/index.html"
+        }
+      ]
     }
   ],
   "storage": {
